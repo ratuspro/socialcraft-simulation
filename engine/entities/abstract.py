@@ -1,7 +1,7 @@
-from ..world import Updatable
+from ..world import Entity
 
 
-class Time(Updatable):
+class Time(Entity):
     __tick: int
 
     def __init__(self) -> None:

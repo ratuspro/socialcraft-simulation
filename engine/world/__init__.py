@@ -1,1 +1,1 @@
-from .core import Updatable, World, Location
+from .core import Entity, World, Location
