@@ -4,38 +4,24 @@ from typing import Callable, Dict, Any, List
 
 import random
 from engine.world.core import Location
-from ..world import Entity, World
-
-
-class Context:
-    __features: Dict[str, Any]
-
-    def __init__(self) -> None:
-        self.__features = {}
-
-    def add_feature(self, label: str, value: Any) -> None:
-        self.__features[label] = value
+from ..world import Entity, World, Context
+from ..logger import Logger
 
 
 class Agent(Entity):
     __name: str
-    __context: Context
     __practices: List[Practice]
     __current_practice: Practice | None
 
     def __init__(self, name: str) -> None:
         super().__init__()
         self.__name = name
-        self.__context = Context()
         self.__practices = []
         self.__current_practice = None
 
     @property
     def name(self) -> str:
         return self.__name
-
-    def set_context(self, context: Context) -> None:
-        self.__context = context
 
     def add_practice(self, new_practice: Practice) -> None:
         self.__practices.append(new_practice)
@@ -44,7 +30,7 @@ class Agent(Entity):
         best_practices, best_practice_salience = [], -1
 
         for practice in self.__practices:
-            salience = practice.calculate_salience(self.__context)
+            salience = practice.calculate_salience(self.context)
             if salience == best_practice_salience:
                 best_practices.append(practice)
             elif salience > best_practice_salience:
@@ -76,9 +62,10 @@ class Practice(ABC):
     _world: World
     __salience_function: Callable[[Context], float]
 
-    def __init__(self, owner: Agent, world: World) -> None:
+    def __init__(self, owner: Agent, world: World, label: str) -> None:
         self._owner = owner
         self._world = world
+        self.__practice_label = label
 
     def set_salience_function(self, fn_salience: Callable[[Context], float]) -> None:
         self.__salience_function = fn_salience
@@ -92,11 +79,11 @@ class Practice(ABC):
 
     @abstractmethod
     def enter(self) -> None:
-        pass
+        Logger.instance().on_practice_starts(self._owner, self.__practice_label)
 
     @abstractmethod
     def exit(self) -> None:
-        pass
+        Logger.instance().on_practice_ends(self._owner, self.__practice_label)
 
     @abstractmethod
     def has_ended(self) -> bool:
@@ -107,12 +94,19 @@ class MoveToLocation(Practice):
     __destination: Location
     __path: List[Location]
 
-    def __init__(self, owner: Agent, world: World, destination: Location) -> None:
-        super().__init__(owner, world)
+    def __init__(
+        self,
+        owner: Agent,
+        world: World,
+        destination: Location,
+        label: str = "MoveToLocation",
+    ) -> None:
+        super().__init__(owner, world, label)
         self.__destination = destination
         self.__path = []
 
     def enter(self) -> None:
+        super().enter()
         agent_location = self._world.get_entity_location(self._owner)
         self.__path = self._world.get_path_to(agent_location, self.__destination)
 
@@ -130,4 +124,4 @@ class MoveToLocation(Practice):
             )
 
     def exit(self) -> None:
-        pass
+        super().exit()

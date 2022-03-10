@@ -1,14 +1,45 @@
 from abc import abstractmethod, ABC
-from shutil import ExecError
 from typing import List, Dict
 import networkx as nx
 import matplotlib.pyplot as plt
 
 
+class Context:
+    __features: Dict[str, float]
+
+    def __init__(self) -> None:
+        self.__features = {}
+
+    def add_feature(self, label: str, value: float) -> None:
+        self.__features[label] = value
+
+    def get_feature(self, label: str) -> float:
+        if label not in self.__features.keys():
+            raise Exception("Getting feature with non-existent label.")
+
+        return self.__features[label]
+
+    def get_all_features(self) -> Dict[str, float]:
+        return self.__features
+
+
 class Entity(ABC):
+
+    __context: Context
+
+    def __init__(self) -> None:
+        self.__context = Context()
+
     @abstractmethod
     def tick(self) -> None:
         pass
+
+    def set_context(self, context: Context) -> None:
+        self.__context = context
+
+    @property
+    def context(self) -> Context:
+        return self.__context
 
 
 class Location:
@@ -39,12 +70,15 @@ class World:
     __locations: List[Location]
     __locations_graph: nx.Graph
     __entity_locations: Dict[Entity, Location]
+    __time: int
 
-    def __init__(self) -> None:
+    def __init__(self, logger) -> None:
         self.__entities = []
         self.__locations = []
         self.__entity_locations = {}
         self.__locations_graph = nx.Graph()
+        self.__time = 0
+        self.__logger = logger
 
     def register_entity(self, entity: Entity) -> None:
         if entity in self.__entities:
@@ -111,6 +145,8 @@ class World:
 
         self.__entity_locations[entity] = location
 
+        self.__logger.on_entity_entered(entity, location)
+
     def get_entity_location(self, entity: Entity) -> Location:
         if entity not in self.__entities:
             raise Exception("Getting location of entity not yet registered...")
@@ -135,6 +171,8 @@ class World:
 
         self.__entity_locations[entity] = destination
 
+        self.__logger.on_entity_entered(entity, destination)
+
     def show_locations(self) -> None:
 
         location_entities = {}
@@ -155,6 +193,18 @@ class World:
         nx.draw(self.__locations_graph, with_labels=True)
         plt.show()
 
+    @property
+    def time(self) -> int:
+        return self.__time
+
     def tick(self):
+        self.__time += 1
         for entity in self.__entities:
+            location = self.get_entity_location(entity)
+
+            context = Context()
+            context.add_feature("TIME_OF_DAY", self.__time % 24000)
+            context.add_feature(f"AT_{location.name}", 1)
+
+            entity.set_context(context)
             entity.tick()
