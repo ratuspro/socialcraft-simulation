@@ -49,14 +49,14 @@ if __name__ == "__main__":
     w1 = World(logger)
 
     # Add Locations
-    house1 = Location("House1", min_time_inside=0)
-    house2 = Location("House2", min_time_inside=0)
-    house3 = Location("House3", min_time_inside=0)
-    square = Location("Square", min_time_inside=0)
-    path1 = Location("Path1", min_time_inside=0)
-    path2 = Location("Path2", min_time_inside=0)
-    path3 = Location("Path3", min_time_inside=0)
-    workplace = Location("Workplace", min_time_inside=0)
+    house1 = Location("House1", min_time_inside=10)
+    house2 = Location("House2", min_time_inside=10)
+    house3 = Location("House3", min_time_inside=10)
+    square = Location("Square", min_time_inside=5)
+    path1 = Location("Path1", min_time_inside=1)
+    path2 = Location("Path2", min_time_inside=2)
+    path3 = Location("Path3", min_time_inside=2)
+    workplace = Location("Workplace", min_time_inside=10)
 
     w1.register_location(house1)
     w1.register_location(house2)

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -9,23 +9,36 @@ from ..entities import Entity
 from .location import Location
 
 
-class World:
+class EntityDetails:
+    location: Optional[Location]
+    time_since_last_movement: int
 
+    def __init__(self) -> None:
+        self.location = None
+        self.time_since_last_movement = 0
+
+    def reset_timer(self) -> None:
+        self.time_since_last_movement = 0
+
+
+class World:
     __agents: List[Agent]
     __entities: List[Entity]
     __locations: List[Location]
     __locations_graph: nx.Graph
-    __entity_locations: Dict[Entity, Location]
+    __entity_details: Dict[Entity, EntityDetails]
     __time: int
 
     def __init__(self, logger) -> None:
         self.__entities = []
         self.__agents = []
         self.__locations = []
-        self.__entity_locations = {}
+        self.__entity_details = {}
         self.__locations_graph = nx.Graph()
         self.__time = 0
         self.__logger = logger
+
+    # Agent Management
 
     def register_agent(self, agent: Agent) -> None:
 
@@ -40,23 +53,32 @@ class World:
             raise Exception("Trying to unregister agent not registered!")
 
         self.unregister_entity(agent)
-        self.__agents.append(agent)
+        self.__agents.remove(agent)
+
+    # Entity Management
 
     def register_entity(self, entity: Entity) -> None:
         if entity in self.__entities:
             raise Exception("Trying to register entity already registered!")
 
         self.__entities.append(entity)
+        self.__entity_details[entity] = EntityDetails()
 
     def unregister_entity(self, entity: Entity) -> None:
         if entity not in self.__entities:
             raise Exception("Trying to unregister entity not registered!")
 
-        self.__entities.append(entity)
+        self.__entities.remove(entity)
+        self.__entity_details.pop(entity)
 
     def show_entities(self) -> None:
         for entity in self.__entities:
             print(entity)
+
+    def get_time_since_last_movement(self, entity: Entity) -> int:
+        return self.__entity_details[entity].time_since_last_movement
+
+    # Location Management
 
     def register_location(self, location: Location) -> None:
         if location in self.__locations:
@@ -98,6 +120,8 @@ class World:
 
         self.__locations_graph.remove_edge(locationS, locationT)
 
+    # Movement
+
     def place_entity(self, entity: Entity, location: Location) -> None:
         if entity not in self.__entities:
             raise Exception("Placing entity not yet registered...")
@@ -105,18 +129,19 @@ class World:
         if location not in self.__locations:
             raise Exception("Placing entity on location not yet registered...")
 
-        self.__entity_locations[entity] = location
+        self.__entity_details[entity].location = location
+        self.__entity_details[entity].reset_timer()
 
         self.__logger.on_entity_entered(entity, location)
 
-    def get_entity_location(self, entity: Entity) -> Location:
+    def get_entity_location(self, entity: Entity) -> Location | None:
         if entity not in self.__entities:
             raise Exception("Getting location of entity not yet registered...")
 
-        if entity not in self.__entity_locations:
+        if entity not in self.__entity_details:
             raise Exception("Getting location of entity not yet placed...")
 
-        return self.__entity_locations[entity]
+        return self.__entity_details[entity].location
 
     def get_path_to(self, origin: Location, destination: Location) -> List[Location]:
         path = nx.astar_path(self.__locations_graph, origin, destination)
@@ -131,7 +156,15 @@ class World:
         if destination not in self.__locations_graph.adj[agent_location]:
             raise Exception("Trying to move to location not adjacent")
 
-        self.__entity_locations[entity] = destination
+        time = self.get_time_since_last_movement(entity)
+
+        if time < agent_location.min_time_inside:
+            raise Exception(
+                "Attempting to move before spending the minimum time inside a location"
+            )
+
+        self.__entity_details[entity].location = destination
+        self.__entity_details[entity].reset_timer()
 
         self.__logger.on_entity_entered(entity, destination)
 
@@ -141,8 +174,8 @@ class World:
         for location in self.__locations:
             location_entities[location] = []
 
-        for entity, location in self.__entity_locations.items():
-            location_entities[location].append(entity)
+        for entity, entity_etails in self.__entity_details.items():
+            location_entities[entity_etails.location].append(entity)
 
         for location in self.__locations:
             print(location)
@@ -151,9 +184,13 @@ class World:
             ).removesuffix(", ")
             print(f" ^-> Entities [{entities_string}]")
 
+    # Utilities
+
     def plot_map(self) -> None:
         nx.draw(self.__locations_graph, with_labels=True)
         plt.show()
+
+    # Time Management
 
     @property
     def time(self) -> int:
@@ -167,9 +204,12 @@ class World:
 
             context = Context()
             context.add_feature("TIME_OF_DAY", self.__time % 24000)
-            context.add_feature(f"AT_{location.name}", 1)
+
+            if location is not None:
+                context.add_feature(f"AT_{location.name}", 1)
 
             agent.set_context(context)
 
         for entity in self.__entities:
+            self.__entity_details[entity].time_since_last_movement += 1
             entity.tick()

@@ -16,5 +16,6 @@ class Location:
     def __repr__(self) -> str:
         return f"Location - {self.__name}"
 
+    @property
     def min_time_inside(self) -> int:
         return self.__min_time_inside
