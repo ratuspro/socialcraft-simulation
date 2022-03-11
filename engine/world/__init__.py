@@ -1,1 +1,2 @@
-from .core import Entity, World, Location, Context
+from .world import World
+from .location import Location

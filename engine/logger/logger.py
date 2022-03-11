@@ -9,7 +9,9 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
-from ..world import Location, Entity
+from ..entities import Entity
+from ..world import Location
+
 
 Base = declarative_base()
 

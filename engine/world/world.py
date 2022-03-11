@@ -1,71 +1,17 @@
-from abc import abstractmethod, ABC
-from typing import List, Dict
-import networkx as nx
+from abc import ABC, abstractmethod
+from typing import Dict, List
+
 import matplotlib.pyplot as plt
+import networkx as nx
 
-
-class Context:
-    __features: Dict[str, float]
-
-    def __init__(self) -> None:
-        self.__features = {}
-
-    def add_feature(self, label: str, value: float) -> None:
-        self.__features[label] = value
-
-    def get_feature(self, label: str) -> float:
-        if label not in self.__features.keys():
-            raise Exception("Getting feature with non-existent label.")
-
-        return self.__features[label]
-
-    def get_all_features(self) -> Dict[str, float]:
-        return self.__features
-
-
-class Entity(ABC):
-
-    __context: Context
-
-    def __init__(self) -> None:
-        self.__context = Context()
-
-    @abstractmethod
-    def tick(self) -> None:
-        pass
-
-    def set_context(self, context: Context) -> None:
-        self.__context = context
-
-    @property
-    def context(self) -> Context:
-        return self.__context
-
-
-class Location:
-    __name: str
-    __min_time_inside: int
-
-    def __init__(self, name: str, min_time_inside: int) -> None:
-        self.__name = name
-        self.__min_time_inside = min_time_inside
-
-    @property
-    def name(self) -> str:
-        return self.__name
-
-    def __str__(self) -> str:
-        return self.__name
-
-    def __repr__(self) -> str:
-        return f"Location - {self.__name}"
-
-    def min_time_inside(self) -> int:
-        return self.__min_time_inside
+from ..agents import Agent, Context
+from ..entities import Entity
+from .location import Location
 
 
 class World:
 
+    __agents: List[Agent]
     __entities: List[Entity]
     __locations: List[Location]
     __locations_graph: nx.Graph
@@ -74,11 +20,27 @@ class World:
 
     def __init__(self, logger) -> None:
         self.__entities = []
+        self.__agents = []
         self.__locations = []
         self.__entity_locations = {}
         self.__locations_graph = nx.Graph()
         self.__time = 0
         self.__logger = logger
+
+    def register_agent(self, agent: Agent) -> None:
+
+        if agent in self.__agents:
+            raise Exception("Trying to register agent already registered!")
+
+        self.register_entity(agent)
+        self.__agents.append(agent)
+
+    def unregister_agent(self, agent: Agent) -> None:
+        if agent not in self.__agents:
+            raise Exception("Trying to unregister agent not registered!")
+
+        self.unregister_entity(agent)
+        self.__agents.append(agent)
 
     def register_entity(self, entity: Entity) -> None:
         if entity in self.__entities:
@@ -199,12 +161,15 @@ class World:
 
     def tick(self):
         self.__time += 1
-        for entity in self.__entities:
-            location = self.get_entity_location(entity)
+
+        for agent in self.__agents:
+            location = self.get_entity_location(agent)
 
             context = Context()
             context.add_feature("TIME_OF_DAY", self.__time % 24000)
             context.add_feature(f"AT_{location.name}", 1)
 
-            entity.set_context(context)
+            agent.set_context(context)
+
+        for entity in self.__entities:
             entity.tick()
