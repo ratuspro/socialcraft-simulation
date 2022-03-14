@@ -3,7 +3,7 @@ import math
 import random
 from typing import Dict, List, Tuple
 
-from engine.agents import Agent, Context, MoveToLocation, Sleep
+from engine.agents import Agent, Context, MoveToLocation, Sleep, InteractWithOther
 from engine.entities import Object
 from engine.logger import Logger, LogType
 from engine.world import Location, World
@@ -47,7 +47,7 @@ def show_report(agent: Agent):
                 total_time += log[1]
 
         print(
-            f"## Practice {practice:10} / occur: {num_occurences:5} / time: {total_time:5} / avg: {total_time/num_occurences:.5}"
+            f"## {practice:20} / occur: {num_occurences:5} / time: {total_time:5} / avg: {total_time/num_occurences:.5}"
         )
 
 
@@ -75,7 +75,7 @@ def weightedSalienceFunction(
         if label in weights:
             weight = weights[label][0]
             bias = weights[label][1]
-        sum += relu(bias + value * weight)
+        sum += sigmoid(bias + value * weight)
     return sum / len(features)
 
 
@@ -181,6 +181,26 @@ if __name__ == "__main__":
     )
     agent_1.add_practice(p1_sleep)
 
+    p1_good_interaction = InteractWithOther(
+        owner=agent_1, world=w1, label="Good Interaction"
+    )
+    p1_good_interaction.set_salience_function(
+        lambda context: weightedSalienceFunction(
+            context, create_random_salience_vector(features)
+        )
+    )
+    agent_1.add_practice(p1_good_interaction)
+
+    p1_bad_interaction = InteractWithOther(
+        owner=agent_1, world=w1, label="Bad Interaction"
+    )
+    p1_bad_interaction.set_salience_function(
+        lambda context: weightedSalienceFunction(
+            context, create_random_salience_vector(features)
+        )
+    )
+    agent_1.add_practice(p1_bad_interaction)
+
     # Create Agent 2
     agent_2 = Agent("A2")
     w1.register_agent(agent_2)
@@ -213,6 +233,26 @@ if __name__ == "__main__":
         )
     )
     agent_2.add_practice(p2_sleep)
+
+    p2_good_interaction = InteractWithOther(
+        owner=agent_2, world=w1, label="Good Interaction"
+    )
+    p2_good_interaction.set_salience_function(
+        lambda context: weightedSalienceFunction(
+            context, create_random_salience_vector(features)
+        )
+    )
+    agent_2.add_practice(p2_good_interaction)
+
+    p2__bad_interaction = InteractWithOther(
+        owner=agent_2, world=w1, label="Bad Interaction"
+    )
+    p2__bad_interaction.set_salience_function(
+        lambda context: weightedSalienceFunction(
+            context, create_random_salience_vector(features)
+        )
+    )
+    agent_2.add_practice(p2__bad_interaction)
 
     # Simulate
     NUM_TICKS = 24000
