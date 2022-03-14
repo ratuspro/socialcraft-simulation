@@ -203,8 +203,7 @@ class World:
             location = self.get_entity_location(agent)
 
             context = Context()
-            context.add_feature("TIME_OF_DAY", self.__time % 24000)
-
+            context.add_feature("TIME_OF_DAY", (self.__time % 24000) / 24000)
             if location is not None:
                 context.add_feature(f"AT_{location.name}", 1)
 

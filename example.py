@@ -4,6 +4,7 @@ import random
 from typing import Dict
 
 from engine.agents import Agent, Context, MoveToLocation
+from engine.entities import Object
 from engine.logger import Logger, LogType
 from engine.world import Location, World
 
@@ -52,7 +53,7 @@ if __name__ == "__main__":
     house1 = Location("House1", min_time_inside=10)
     house2 = Location("House2", min_time_inside=10)
     house3 = Location("House3", min_time_inside=10)
-    square = Location("Square", min_time_inside=5)
+    square = Location("Square", min_time_inside=50)
     path1 = Location("Path1", min_time_inside=1)
     path2 = Location("Path2", min_time_inside=2)
     path3 = Location("Path3", min_time_inside=2)
@@ -75,11 +76,22 @@ if __name__ == "__main__":
     w1.register_location_connection(path3, square)
     w1.register_location_connection(path3, workplace)
 
-    # Add abstract concepts
+    # Create Objects
+    house1_bed = Object("Bed", labels=["BED"])
+    house2_bed = Object("Bed", labels=["BED"])
+    house3_bed = Object("Bed", labels=["BED"])
+
+    w1.register_entity(house1_bed)
+    w1.register_entity(house2_bed)
+    w1.register_entity(house3_bed)
+
+    w1.place_entity(house1_bed, house1)
+    w1.place_entity(house2_bed, house2)
+    w1.place_entity(house3_bed, house3)
 
     # Create Agent 1
     agent_1 = Agent("A1")
-    w1.register_entity(agent_1)
+    w1.register_agent(agent_1)
     w1.place_entity(agent_1, square)
 
     p1_1 = MoveToLocation(
@@ -89,15 +101,15 @@ if __name__ == "__main__":
         lambda context: weightedSalienceFunction(
             context,
             {
-                "TIME_OF_DAY": random.random(),
-                f"AT_{house1.name}": random.random(),
-                f"AT_{house2.name}": random.random(),
-                f"AT_{house3.name}": random.random(),
-                f"AT_{square.name}": random.random(),
-                f"AT_{path1.name}": random.random(),
-                f"AT_{path2.name}": random.random(),
-                f"AT_{path3.name}": random.random(),
-                f"AT_{workplace.name}": random.random(),
+                "TIME_OF_DAY": random.random() * 2 - 1,
+                f"AT_{house1.name}": random.random() * 2 - 1,
+                f"AT_{house2.name}": random.random() * 2 - 1,
+                f"AT_{house3.name}": random.random() * 2 - 1,
+                f"AT_{square.name}": random.random() * 2 - 1,
+                f"AT_{path1.name}": random.random() * 2 - 1,
+                f"AT_{path2.name}": random.random() * 2 - 1,
+                f"AT_{path3.name}": random.random() * 2 - 1,
+                f"AT_{workplace.name}": random.random() * 2 - 1,
             },
         )
     )
@@ -110,15 +122,15 @@ if __name__ == "__main__":
         lambda context: weightedSalienceFunction(
             context,
             {
-                "TIME_OF_DAY": random.random(),
-                f"AT_{house1.name}": random.random(),
-                f"AT_{house2.name}": random.random(),
-                f"AT_{house3.name}": random.random(),
-                f"AT_{square.name}": random.random(),
-                f"AT_{path1.name}": random.random(),
-                f"AT_{path2.name}": random.random(),
-                f"AT_{path3.name}": random.random(),
-                f"AT_{workplace.name}": random.random(),
+                "TIME_OF_DAY": random.random() * 2 - 1,
+                f"AT_{house1.name}": random.random() * 2 - 1,
+                f"AT_{house2.name}": random.random() * 2 - 1,
+                f"AT_{house3.name}": random.random() * 2 - 1,
+                f"AT_{square.name}": random.random() * 2 - 1,
+                f"AT_{path1.name}": random.random() * 2 - 1,
+                f"AT_{path2.name}": random.random() * 2 - 1,
+                f"AT_{path3.name}": random.random() * 2 - 1,
+                f"AT_{workplace.name}": random.random() * 2 - 1,
             },
         )
     )
@@ -126,7 +138,7 @@ if __name__ == "__main__":
 
     # Create Agent 2
     agent_2 = Agent("A2")
-    w1.register_entity(agent_2)
+    w1.register_agent(agent_2)
     w1.place_entity(agent_2, square)
 
     p2_1 = MoveToLocation(
@@ -136,15 +148,15 @@ if __name__ == "__main__":
         lambda context: weightedSalienceFunction(
             context,
             {
-                "TIME_OF_DAY": random.random(),
-                f"AT_{house1.name}": random.random(),
-                f"AT_{house2.name}": random.random(),
-                f"AT_{house3.name}": random.random(),
-                f"AT_{square.name}": random.random(),
-                f"AT_{path1.name}": random.random(),
-                f"AT_{path2.name}": random.random(),
-                f"AT_{path3.name}": random.random(),
-                f"AT_{workplace.name}": random.random(),
+                "TIME_OF_DAY": random.random() * 2 - 1,
+                f"AT_{house1.name}": random.random() * 2 - 1,
+                f"AT_{house2.name}": random.random() * 2 - 1,
+                f"AT_{house3.name}": random.random() * 2 - 1,
+                f"AT_{square.name}": random.random() * 2 - 1,
+                f"AT_{path1.name}": random.random() * 2 - 1,
+                f"AT_{path2.name}": random.random() * 2 - 1,
+                f"AT_{path3.name}": random.random() * 2 - 1,
+                f"AT_{workplace.name}": random.random() * 2 - 1,
             },
         )
     )
@@ -157,15 +169,15 @@ if __name__ == "__main__":
         lambda context: weightedSalienceFunction(
             context,
             {
-                "TIME_OF_DAY": random.random(),
-                f"AT_{house1.name}": random.random(),
-                f"AT_{house2.name}": random.random(),
-                f"AT_{house3.name}": random.random(),
-                f"AT_{square.name}": random.random(),
-                f"AT_{path1.name}": random.random(),
-                f"AT_{path2.name}": random.random(),
-                f"AT_{path3.name}": random.random(),
-                f"AT_{workplace.name}": random.random(),
+                "TIME_OF_DAY": random.random() * 2 - 1,
+                f"AT_{house1.name}": random.random() * 2 - 1,
+                f"AT_{house2.name}": random.random() * 2 - 1,
+                f"AT_{house3.name}": random.random() * 2 - 1,
+                f"AT_{square.name}": random.random() * 2 - 1,
+                f"AT_{path1.name}": random.random() * 2 - 1,
+                f"AT_{path2.name}": random.random() * 2 - 1,
+                f"AT_{path3.name}": random.random() * 2 - 1,
+                f"AT_{workplace.name}": random.random() * 2 - 1,
             },
         )
     )
@@ -174,8 +186,8 @@ if __name__ == "__main__":
     w1.plot_map()
 
     # Simulate
-    NUM_TICKS = 50
-    NUM_TICKS_TO_LOG_COMMIT = 10
+    NUM_TICKS = 50000
+    NUM_TICKS_TO_LOG_COMMIT = 1000
 
     print("Starting Simulation...")
     start = datetime.datetime.now()
