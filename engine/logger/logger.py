@@ -111,18 +111,21 @@ class Logger:
     def get_action(
         self,
         tick: Optional[int] = None,
-        action: Optional[LogType] = None,
+        actions: Optional[List[LogType]] = None,
         subject: Optional[Entity] = None,
     ) -> List[Action]:
         query = self.__database_session.query(Action)
 
         if tick is not None:
-            query = query.filter_by(tick=tick)
+            query = query.filter(Action.tick == tick)
 
-        if action is not None:
-            query = query.filter_by(action=str(action))
+        if actions is not None and len(actions) > 0:
+
+            query = query.filter(
+                Action.action.in_([str(logtype) for logtype in actions])
+            )
 
         if subject is not None:
-            query = query.filter_by(subject=str(subject))
+            query = query.filter(Action.subject == str(subject))
 
         return query.all()

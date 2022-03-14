@@ -1,6 +1,8 @@
+from audioop import add
 import datetime
 import math
 import random
+from time import sleep
 from typing import Dict, List
 
 from engine.agents import Agent, Context, MoveToLocation, Sleep
@@ -13,13 +15,42 @@ def show_report(agent: Agent):
 
     logger = Logger.instance()
 
-    entered_actions = logger.get_action(subject=agent, action=LogType.ENTERED_LOCATION)
+    entered_actions = logger.get_action(
+        subject=agent, actions=[LogType.ENTERED_LOCATION]
+    )
 
     print("")
     print(f"# Stats for {agent.name}:")
     print(f"## Number of different locations visited: {len(set([action.properties['location'] for action in entered_actions]))}")  # type: ignore
     print(f"## Number of locations visited: {len(entered_actions)}")  # type: ignore
-    print("")
+
+    # Time per practice
+
+    practices = logger.get_action(
+        subject=agent, actions=[LogType.STARTED_PRACTICE, LogType.FINISHED_PRACTICE]
+    )
+
+    practice_log = []
+    practices_available = set()
+    for i in range(len(practices) // 2):
+        practice_time = practices[i * 2 + 1].tick - practices[i * 2].tick
+        practice_label = practices[i * 2 + 1].properties["label"]  # type: ignore
+        practice_log.append((practice_label, practice_time))
+        practices_available.add(practice_label)
+
+    print(f"# Stats for {agent.name} practices:")
+    for practice in practices_available:
+        num_occurences = 0
+        total_time = 0
+
+        for log in practice_log:
+            if log[0] == practice:
+                num_occurences += 1
+                total_time += log[1]
+
+        print(
+            f"## Practice {practice:10} / occur: {num_occurences:5} / time: {total_time:5} / avg: {total_time/num_occurences:.5}"
+        )
 
 
 def sigmoid(x):
@@ -138,7 +169,7 @@ if __name__ == "__main__":
     )
     agent_1.add_practice(p1_move_to_work)
 
-    p1_sleep = Sleep(owner=agent_1, world=w1)
+    p1_sleep = Sleep(owner=agent_1, world=w1, min_sleep_time=1000)
     p1_sleep.set_salience_function(
         lambda context: weightedSalienceFunction(
             context, create_random_salience_vector(features)
@@ -171,7 +202,7 @@ if __name__ == "__main__":
     )
     agent_2.add_practice(p2_move_to_work)
 
-    p2_sleep = Sleep(owner=agent_2, world=w1)
+    p2_sleep = Sleep(owner=agent_2, world=w1, min_sleep_time=1000)
     p2_sleep.set_salience_function(
         lambda context: weightedSalienceFunction(
             context, create_random_salience_vector(features)
@@ -180,8 +211,8 @@ if __name__ == "__main__":
     agent_2.add_practice(p2_sleep)
 
     # Simulate
-    NUM_TICKS = 50000
-    NUM_TICKS_TO_LOG_COMMIT = 1000
+    NUM_TICKS = 24000
+    NUM_TICKS_TO_LOG_COMMIT = 4000
 
     print("Starting Simulation...")
     start = datetime.datetime.now()
@@ -197,7 +228,6 @@ if __name__ == "__main__":
     delta = end - start
     total_miliseconds = delta.total_seconds() * 1000 + delta.microseconds / 1000
 
-    print(delta.total_seconds())
     print(f"Total simulation took {total_miliseconds/1000} seconds")
     print(f"Average tick took {total_miliseconds/NUM_TICKS} miliseconds")
 
