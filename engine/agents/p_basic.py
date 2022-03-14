@@ -1,22 +1,22 @@
 from .practice import Practice
+from .agent import Agent
+from ..world import World
 
 
 class Sleep(Practice):
-    def __init__(self, owner: Agent, world: World) -> None:
+    def __init__(self, owner: Agent, world: World, min_sleep_time: int = 100) -> None:
         super().__init__(owner, world, "Sleep")
+        self.__min_sleep_time = min_sleep_time
 
-    @abstractmethod
     def tick(self) -> None:
-        pass
+        self.__sleep_time += 1
 
-    @abstractmethod
     def enter(self) -> None:
-        Logger.instance().on_practice_starts(self._owner, self.__practice_label)
+        super().enter()
+        self.__sleep_time = 0
 
-    @abstractmethod
     def exit(self) -> None:
-        Logger.instance().on_practice_ends(self._owner, self.__practice_label)
+        super().exit()
 
-    @abstractmethod
     def has_ended(self) -> bool:
-        pass
+        return self.__sleep_time >= self.__min_sleep_time

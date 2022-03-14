@@ -183,6 +183,7 @@ class World:
                 [str(f"{entity}, ") for entity in location_entities[location]]
             ).removesuffix(", ")
             print(f" ^-> Entities [{entities_string}]")
+            
 
     # Utilities
 
@@ -199,13 +200,32 @@ class World:
     def tick(self):
         self.__time += 1
 
-        for agent in self.__agents:
-            location = self.get_entity_location(agent)
+        entities_per_location = {}
+        for entity, details in self.__entity_details.items():
+            if details.location not in entities_per_location:
+                entities_per_location[details.location] = [entity]
+            else:
+                 entities_per_location[details.location].append(entity)
 
+        for agent in self.__agents:
+            
             context = Context()
+
+            # Time of Day
             context.add_feature("TIME_OF_DAY", (self.__time % 24000) / 24000)
+            
+            # Location
+            location = self.get_entity_location(agent)
             if location is not None:
                 context.add_feature(f"AT_{location.name}", 1)
+
+                # Entities in Location
+                if location in entities_per_location:
+                    for entity in entities_per_location[location]:
+                        context.add_feature(f"NEAR_{entity.name}", 1)
+
+            # Agents in Location
+            # TODO
 
             agent.set_context(context)
 

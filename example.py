@@ -1,9 +1,9 @@
 import datetime
 import math
 import random
-from typing import Dict
+from typing import Dict, List
 
-from engine.agents import Agent, Context, MoveToLocation
+from engine.agents import Agent, Context, MoveToLocation, Sleep
 from engine.entities import Object
 from engine.logger import Logger, LogType
 from engine.world import Location, World
@@ -39,8 +39,19 @@ def weightedSalienceFunction(context: Context, weights: Dict[str, float]) -> flo
         return 0
     sum = 0
     for label, value in features.items():
-        sum += sigmoid(value * weights[label])
+        weight = 0
+        if label in weights:
+            weight = weights[label]
+        sum += sigmoid(value * weight)
     return sum / len(features)
+
+
+def create_random_salience_vector(features: List[str]) -> Dict[str, float]:
+
+    dict = {}
+    for feature in features:
+        dict[feature] = random.random() * 2 - 1
+    return dict
 
 
 if __name__ == "__main__":
@@ -89,101 +100,84 @@ if __name__ == "__main__":
     w1.place_entity(house2_bed, house2)
     w1.place_entity(house3_bed, house3)
 
+    # Define Feature Vector
+    features = []
+    features.append("TIME_OF_DAY")
+    features.append(f"AT_{house1.name}")
+    features.append(f"AT_{house2.name}")
+    features.append(f"AT_{house3.name}")
+    features.append(f"AT_{square.name}")
+    features.append(f"AT_{path1.name}")
+    features.append(f"AT_{path2.name}")
+    features.append(f"AT_{path3.name}")
+    features.append(f"AT_{workplace.name}")
+
     # Create Agent 1
     agent_1 = Agent("A1")
     w1.register_agent(agent_1)
     w1.place_entity(agent_1, square)
 
-    p1_1 = MoveToLocation(
+    p1_move_to_home = MoveToLocation(
         owner=agent_1, world=w1, destination=house1, label="MoveToHome"
     )
-    p1_1.set_salience_function(
+    p1_move_to_home.set_salience_function(
         lambda context: weightedSalienceFunction(
-            context,
-            {
-                "TIME_OF_DAY": random.random() * 2 - 1,
-                f"AT_{house1.name}": random.random() * 2 - 1,
-                f"AT_{house2.name}": random.random() * 2 - 1,
-                f"AT_{house3.name}": random.random() * 2 - 1,
-                f"AT_{square.name}": random.random() * 2 - 1,
-                f"AT_{path1.name}": random.random() * 2 - 1,
-                f"AT_{path2.name}": random.random() * 2 - 1,
-                f"AT_{path3.name}": random.random() * 2 - 1,
-                f"AT_{workplace.name}": random.random() * 2 - 1,
-            },
+            context, create_random_salience_vector(features)
         )
     )
-    agent_1.add_practice(p1_1)
 
-    p1_2 = MoveToLocation(
+    agent_1.add_practice(p1_move_to_home)
+
+    p1_move_to_work = MoveToLocation(
         owner=agent_1, world=w1, destination=workplace, label="MoveToWork"
     )
-    p1_2.set_salience_function(
+    p1_move_to_work.set_salience_function(
         lambda context: weightedSalienceFunction(
-            context,
-            {
-                "TIME_OF_DAY": random.random() * 2 - 1,
-                f"AT_{house1.name}": random.random() * 2 - 1,
-                f"AT_{house2.name}": random.random() * 2 - 1,
-                f"AT_{house3.name}": random.random() * 2 - 1,
-                f"AT_{square.name}": random.random() * 2 - 1,
-                f"AT_{path1.name}": random.random() * 2 - 1,
-                f"AT_{path2.name}": random.random() * 2 - 1,
-                f"AT_{path3.name}": random.random() * 2 - 1,
-                f"AT_{workplace.name}": random.random() * 2 - 1,
-            },
+            context, create_random_salience_vector(features)
         )
     )
-    agent_1.add_practice(p1_2)
+    agent_1.add_practice(p1_move_to_work)
+
+    p1_sleep = Sleep(owner=agent_1, world=w1)
+    p1_sleep.set_salience_function(
+        lambda context: weightedSalienceFunction(
+            context, create_random_salience_vector(features)
+        )
+    )
+    agent_1.add_practice(p1_sleep)
 
     # Create Agent 2
     agent_2 = Agent("A2")
     w1.register_agent(agent_2)
     w1.place_entity(agent_2, square)
 
-    p2_1 = MoveToLocation(
+    p2_move_to_home = MoveToLocation(
         owner=agent_2, world=w1, destination=house2, label="MoveToHome"
     )
-    p2_1.set_salience_function(
+    p2_move_to_home.set_salience_function(
         lambda context: weightedSalienceFunction(
-            context,
-            {
-                "TIME_OF_DAY": random.random() * 2 - 1,
-                f"AT_{house1.name}": random.random() * 2 - 1,
-                f"AT_{house2.name}": random.random() * 2 - 1,
-                f"AT_{house3.name}": random.random() * 2 - 1,
-                f"AT_{square.name}": random.random() * 2 - 1,
-                f"AT_{path1.name}": random.random() * 2 - 1,
-                f"AT_{path2.name}": random.random() * 2 - 1,
-                f"AT_{path3.name}": random.random() * 2 - 1,
-                f"AT_{workplace.name}": random.random() * 2 - 1,
-            },
+            context, create_random_salience_vector(features)
         )
     )
-    agent_2.add_practice(p2_1)
+    agent_2.add_practice(p2_move_to_home)
 
-    p2_2 = MoveToLocation(
+    p2_move_to_work = MoveToLocation(
         owner=agent_2, world=w1, destination=workplace, label="MoveToWork"
     )
-    p2_2.set_salience_function(
+    p2_move_to_work.set_salience_function(
         lambda context: weightedSalienceFunction(
-            context,
-            {
-                "TIME_OF_DAY": random.random() * 2 - 1,
-                f"AT_{house1.name}": random.random() * 2 - 1,
-                f"AT_{house2.name}": random.random() * 2 - 1,
-                f"AT_{house3.name}": random.random() * 2 - 1,
-                f"AT_{square.name}": random.random() * 2 - 1,
-                f"AT_{path1.name}": random.random() * 2 - 1,
-                f"AT_{path2.name}": random.random() * 2 - 1,
-                f"AT_{path3.name}": random.random() * 2 - 1,
-                f"AT_{workplace.name}": random.random() * 2 - 1,
-            },
+            context, create_random_salience_vector(features)
         )
     )
-    agent_2.add_practice(p2_2)
+    agent_2.add_practice(p2_move_to_work)
 
-    w1.plot_map()
+    p2_sleep = Sleep(owner=agent_2, world=w1)
+    p2_sleep.set_salience_function(
+        lambda context: weightedSalienceFunction(
+            context, create_random_salience_vector(features)
+        )
+    )
+    agent_2.add_practice(p2_sleep)
 
     # Simulate
     NUM_TICKS = 50000
