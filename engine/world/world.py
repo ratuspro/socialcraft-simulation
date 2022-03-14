@@ -183,7 +183,6 @@ class World:
                 [str(f"{entity}, ") for entity in location_entities[location]]
             ).removesuffix(", ")
             print(f" ^-> Entities [{entities_string}]")
-            
 
     # Utilities
 
@@ -205,15 +204,15 @@ class World:
             if details.location not in entities_per_location:
                 entities_per_location[details.location] = [entity]
             else:
-                 entities_per_location[details.location].append(entity)
+                entities_per_location[details.location].append(entity)
 
         for agent in self.__agents:
-            
+
             context = Context()
 
             # Time of Day
             context.add_feature("TIME_OF_DAY", (self.__time % 24000) / 24000)
-            
+
             # Location
             location = self.get_entity_location(agent)
             if location is not None:
@@ -223,9 +222,6 @@ class World:
                 if location in entities_per_location:
                     for entity in entities_per_location[location]:
                         context.add_feature(f"NEAR_{entity.name}", 1)
-
-            # Agents in Location
-            # TODO
 
             agent.set_context(context)
 

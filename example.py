@@ -1,9 +1,7 @@
-from audioop import add
 import datetime
 import math
 import random
-from time import sleep
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from engine.agents import Agent, Context, MoveToLocation, Sleep
 from engine.entities import Object
@@ -54,34 +52,40 @@ def show_report(agent: Agent):
 
 
 def sigmoid(x):
-    if x >= 0:
-        z = math.exp(-x)
-        sig = 1 / (1 + z)
-        return sig
+    return 1 / (1 + math.exp(-x))
+
+
+def relu(x):
+    if x < 0:
+        return 0
     else:
-        z = math.exp(x)
-        sig = z / (1 + z)
-        return sig
+        return x
 
 
-def weightedSalienceFunction(context: Context, weights: Dict[str, float]) -> float:
+def weightedSalienceFunction(
+    context: Context, weights: Dict[str, Tuple[float, float]]
+) -> float:
     features = context.get_all_features()
     if len(features) == 0:
         return 0
     sum = 0
     for label, value in features.items():
         weight = 0
+        bias = 0
         if label in weights:
-            weight = weights[label]
-        sum += sigmoid(value * weight)
+            weight = weights[label][0]
+            bias = weights[label][1]
+        sum += relu(bias + value * weight)
     return sum / len(features)
 
 
-def create_random_salience_vector(features: List[str]) -> Dict[str, float]:
+def create_random_salience_vector(
+    features: List[str],
+) -> Dict[str, Tuple[float, float]]:
 
     dict = {}
     for feature in features:
-        dict[feature] = random.random() * 2 - 1
+        dict[feature] = (random.random(), random.random())
     return dict
 
 
