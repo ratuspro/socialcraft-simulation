@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 import matplotlib.pyplot as plt
 import networkx as nx
 
-from ..agents import Agent, Context
+from ..agents import Agent, Context, Feature
 from ..entities import Entity
 from .location import Location
 
@@ -211,17 +211,23 @@ class World:
             context = Context()
 
             # Time of Day
-            context.add_feature("TIME_OF_DAY", (self.__time % 24000) / 24000)
+            context.add_feature(
+                Feature("TIME_OF_DAY", None, (self.__time % 24000) / 24000)
+            )
 
             # Location
             location = self.get_entity_location(agent)
             if location is not None:
-                context.add_feature(f"AT_{location.name}", 1)
+                context.add_feature(Feature("InsideLocation", location, 1))
+
+                # Add adjacent locations
+                for adj_location in self.__locations_graph.adj[location]:
+                    context.add_feature(Feature("NearLocation", adj_location, 1))
 
                 # Entities in Location
                 if location in entities_per_location:
                     for entity in entities_per_location[location]:
-                        context.add_feature(f"NEAR_{entity.name}", 1)
+                        context.add_feature(Feature("NearEntity", entity, 1))
 
             agent.set_context(context)
 

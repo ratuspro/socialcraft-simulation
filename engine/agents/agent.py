@@ -5,23 +5,71 @@ from typing import Dict, List, Any
 from ..entities import Entity
 
 
+class Feature:
+    __label: str
+    __value: Any
+    __salience: float
+
+    def __init__(self, label: str, value: Any, salience: float) -> None:
+        self.__label = label
+        self.__value = value
+        self.__salience = salience
+
+    @property
+    def label(self) -> str:
+        return self.__label
+
+    @property
+    def value(self) -> Any:
+        return self.__value
+
+    @property
+    def salience(self) -> float:
+        return self.__salience
+
+
 class Context:
-    __features: Dict[str, float]
+    __features_by_label: Dict[str, List[Feature]]
 
     def __init__(self) -> None:
-        self.__features = {}
+        self.__features_by_label = {}
 
-    def add_feature(self, label: str, value: float) -> None:
-        self.__features[label] = value
+    def add_feature(self, feature: Feature) -> None:
+        if feature.label in self.__features_by_label.keys():
+            self.__features_by_label[feature.label].append(feature)
+        else:
+            self.__features_by_label[feature.label] = [feature]
 
-    def get_feature(self, label: str) -> float:
-        if label not in self.__features.keys():
+    def get_feature_by_label(self, label: str) -> List[Feature]:
+
+        if label not in self.__features_by_label.keys():
             raise Exception("Getting feature with non-existent label.")
 
-        return self.__features[label]
+        return self.__features_by_label[label]
 
-    def get_all_features(self) -> Dict[str, float]:
-        return self.__features
+    def get_salience_of_feature_by_label_and_value(
+        self, label: str, value: Any
+    ) -> float:
+
+        if label not in self.__features_by_label.keys():
+            return 0
+
+        features_with_label = self.__features_by_label[label]
+
+        for feature in features_with_label:
+            if feature.value == value:
+                return feature.salience
+
+        return 0
+
+    def get_all_features(self) -> List[Feature]:
+        all_features = []
+        [
+            all_features.extend(features)
+            for _, features in self.__features_by_label.items()
+        ]
+
+        return all_features
 
 
 class Agent(Entity):

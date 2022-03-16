@@ -1,12 +1,69 @@
 import datetime
 import math
 import random
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Any
 
 from engine.agents import Agent, Context, MoveToLocation, Sleep, InteractWithOther
 from engine.entities import Object
 from engine.logger import Logger, LogType
 from engine.world import Location, World
+
+
+def create_base_agent(name: str, world: World, work: Location, home: Location) -> Agent:
+    agent = Agent(name)
+    world.register_agent(agent)
+    world.place_entity(agent, square)
+
+    p1_move_to_home = MoveToLocation(
+        owner=agent, world=world, destination=home, label="Move Home"
+    )
+    p1_move_to_home.set_salience_function(
+        lambda context: weightedSalienceFunction(
+            context, create_random_salience_vector(features)
+        )
+    )
+
+    agent.add_practice(p1_move_to_home)
+
+    p1_move_to_work = MoveToLocation(
+        owner=agent, world=world, destination=work, label="Move Work"
+    )
+    p1_move_to_work.set_salience_function(
+        lambda context: weightedSalienceFunction(
+            context, create_random_salience_vector(features)
+        )
+    )
+    agent.add_practice(p1_move_to_work)
+
+    p1_sleep = Sleep(owner=agent, world=world, min_sleep_time=6000)
+    p1_sleep.set_salience_function(
+        lambda context: weightedSalienceFunction(
+            context, create_random_salience_vector(features)
+        )
+    )
+    agent.add_practice(p1_sleep)
+
+    p1_good_interaction = InteractWithOther(
+        owner=agent, world=world, label="Good Interaction"
+    )
+    p1_good_interaction.set_salience_function(
+        lambda context: weightedSalienceFunction(
+            context, create_random_salience_vector(features)
+        )
+    )
+    agent.add_practice(p1_good_interaction)
+
+    p1_bad_interaction = InteractWithOther(
+        owner=agent, world=world, label="Bad Interaction"
+    )
+    p1_bad_interaction.set_salience_function(
+        lambda context: weightedSalienceFunction(
+            context, create_random_salience_vector(features)
+        )
+    )
+    agent.add_practice(p1_bad_interaction)
+
+    return agent
 
 
 def show_report(agent: Agent):
@@ -63,25 +120,25 @@ def relu(x):
 
 
 def weightedSalienceFunction(
-    context: Context, weights: Dict[str, Tuple[float, float]]
+    context: Context, weights: Dict[Tuple[str, Any], Tuple[float, float]]
 ) -> float:
     features = context.get_all_features()
-    if len(features) == 0:
-        return 0
-    sum = 0
-    for label, value in features.items():
-        weight = 0
-        bias = 0
-        if label in weights:
-            weight = weights[label][0]
-            bias = weights[label][1]
-        sum += sigmoid(bias + value * weight)
-    return sum / len(features)
+
+    total_salience = 0
+
+    for w_label, weight in weights.items():
+        total_salience += sigmoid(
+            context.get_salience_of_feature_by_label_and_value(w_label[0], w_label[1])
+            * weight[0]
+            + weight[1]
+        )
+
+    return total_salience / len(weights)
 
 
 def create_random_salience_vector(
-    features: List[str],
-) -> Dict[str, Tuple[float, float]]:
+    features: List[Tuple[str, Any]],
+) -> Dict[List[Tuple[str, Any]], Tuple[float, float]]:
 
     dict = {}
     for feature in features:
@@ -148,111 +205,9 @@ if __name__ == "__main__":
     features.append(f"AT_{workplace.name}")
 
     # Create Agent 1
-    agent_1 = Agent("A1")
-    w1.register_agent(agent_1)
-    w1.place_entity(agent_1, square)
+    agent_1 = create_base_agent(name="Agent 1", world=w1, work=workplace, home=house1)
 
-    p1_move_to_home = MoveToLocation(
-        owner=agent_1, world=w1, destination=house1, label="MoveToHome"
-    )
-    p1_move_to_home.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-
-    agent_1.add_practice(p1_move_to_home)
-
-    p1_move_to_work = MoveToLocation(
-        owner=agent_1, world=w1, destination=workplace, label="MoveToWork"
-    )
-    p1_move_to_work.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-    agent_1.add_practice(p1_move_to_work)
-
-    p1_sleep = Sleep(owner=agent_1, world=w1, min_sleep_time=1000)
-    p1_sleep.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-    agent_1.add_practice(p1_sleep)
-
-    p1_good_interaction = InteractWithOther(
-        owner=agent_1, world=w1, label="Good Interaction"
-    )
-    p1_good_interaction.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-    agent_1.add_practice(p1_good_interaction)
-
-    p1_bad_interaction = InteractWithOther(
-        owner=agent_1, world=w1, label="Bad Interaction"
-    )
-    p1_bad_interaction.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-    agent_1.add_practice(p1_bad_interaction)
-
-    # Create Agent 2
-    agent_2 = Agent("A2")
-    w1.register_agent(agent_2)
-    w1.place_entity(agent_2, square)
-
-    p2_move_to_home = MoveToLocation(
-        owner=agent_2, world=w1, destination=house2, label="MoveToHome"
-    )
-    p2_move_to_home.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-    agent_2.add_practice(p2_move_to_home)
-
-    p2_move_to_work = MoveToLocation(
-        owner=agent_2, world=w1, destination=workplace, label="MoveToWork"
-    )
-    p2_move_to_work.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-    agent_2.add_practice(p2_move_to_work)
-
-    p2_sleep = Sleep(owner=agent_2, world=w1, min_sleep_time=1000)
-    p2_sleep.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-    agent_2.add_practice(p2_sleep)
-
-    p2_good_interaction = InteractWithOther(
-        owner=agent_2, world=w1, label="Good Interaction"
-    )
-    p2_good_interaction.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-    agent_2.add_practice(p2_good_interaction)
-
-    p2__bad_interaction = InteractWithOther(
-        owner=agent_2, world=w1, label="Bad Interaction"
-    )
-    p2__bad_interaction.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-    agent_2.add_practice(p2__bad_interaction)
+    agent_2 = create_base_agent(name="Agent 2", world=w1, work=workplace, home=house2)
 
     # Simulate
     NUM_TICKS = 24000
@@ -277,5 +232,3 @@ if __name__ == "__main__":
 
     show_report(agent_1)
     show_report(agent_2)
-
-    # w1.show_entities()

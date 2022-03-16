@@ -4,7 +4,7 @@ from ..world import World
 
 
 class Sleep(Practice):
-    def __init__(self, owner: Agent, world: World, min_sleep_time: int = 100) -> None:
+    def __init__(self, owner: Agent, world: World, min_sleep_time: int = 6000) -> None:
         super().__init__(owner, world, "Sleep")
         self.__min_sleep_time = min_sleep_time
 

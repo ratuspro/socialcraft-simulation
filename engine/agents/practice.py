@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Callable, Dict, Any, Tuple
 
 from ..agents import Agent, Context
 from ..logger import Logger
@@ -10,8 +10,14 @@ class Practice(ABC):
     _owner: Agent
     _world: World
     __salience_function: Callable[[Context], float]
+    __salience_features: Dict[Tuple[str, Any], Tuple[float, float]]
 
-    def __init__(self, owner: Agent, world: World, label: str) -> None:
+    def __init__(
+        self,
+        owner: Agent,
+        world: World,
+        label: str,
+    ) -> None:
         self._owner = owner
         self._world = world
         self.__practice_label = label

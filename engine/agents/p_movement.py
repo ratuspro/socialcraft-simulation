@@ -1,5 +1,3 @@
-from cmath import exp
-import typing
 from typing import List
 
 from ..world import Location, World
@@ -39,11 +37,14 @@ class MoveToLocation(Practice):
         if current_location is None:
             raise Exception("Attempting to move agent without a location")
 
-        if self._world.get_time_since_last_movement(self._owner) <= current_location.min_time_inside:
+        if (
+            self._world.get_time_since_last_movement(self._owner)
+            <= current_location.min_time_inside
+        ):
             return
 
         current_path_position = self.__path.index(current_location)
-        
+
         if current_path_position < len(self.__path) - 1:
             self._world.move_entity_to_location(
                 self._owner, self.__path[current_path_position + 1]

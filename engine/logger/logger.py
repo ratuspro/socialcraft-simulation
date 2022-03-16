@@ -9,6 +9,8 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
+from engine.entities import entity
+
 from ..entities import Entity
 from ..world import Location
 
@@ -20,6 +22,7 @@ class LogType(Enum):
     ENTERED_LOCATION = "entered_location"
     STARTED_PRACTICE = "started_practice"
     FINISHED_PRACTICE = "finished_practice"
+    REGISTER_SALIENCE_VECTOR = "register_valence"
 
 
 class Action(Base):
@@ -103,6 +106,14 @@ class Logger:
             LogType.FINISHED_PRACTICE,
             str(entity),
             {"label": practice_name},
+        )
+
+    def log_salience_vecotr(self):
+        self.__register_action(
+            -1,
+            LogType.REGISTER_SALIENCE_VECTOR,
+            str(entity),
+            
         )
 
     def commit(self):
