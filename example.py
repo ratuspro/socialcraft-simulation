@@ -1,67 +1,15 @@
-import datetime
-import math
 import random
+import datetime
 from typing import Any, Dict, List, Tuple, Any
 
-from engine.agents import Agent, Context, MoveToLocation, Sleep, InteractWithOther
 from engine.entities import Object
 from engine.logger import Logger, LogType
 from engine.world import Location, World
+from engine.agents import Agent
 
 
 def create_base_agent(name: str, world: World, work: Location, home: Location) -> Agent:
-    agent = Agent(name)
-    world.register_agent(agent)
-    world.place_entity(agent, square)
-
-    p1_move_to_home = MoveToLocation(
-        owner=agent, world=world, destination=home, label="Move Home"
-    )
-    p1_move_to_home.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-
-    agent.add_practice(p1_move_to_home)
-
-    p1_move_to_work = MoveToLocation(
-        owner=agent, world=world, destination=work, label="Move Work"
-    )
-    p1_move_to_work.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-    agent.add_practice(p1_move_to_work)
-
-    p1_sleep = Sleep(owner=agent, world=world, min_sleep_time=6000)
-    p1_sleep.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-    agent.add_practice(p1_sleep)
-
-    p1_good_interaction = InteractWithOther(
-        owner=agent, world=world, label="Good Interaction"
-    )
-    p1_good_interaction.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-    agent.add_practice(p1_good_interaction)
-
-    p1_bad_interaction = InteractWithOther(
-        owner=agent, world=world, label="Bad Interaction"
-    )
-    p1_bad_interaction.set_salience_function(
-        lambda context: weightedSalienceFunction(
-            context, create_random_salience_vector(features)
-        )
-    )
-    agent.add_practice(p1_bad_interaction)
+    agent = Agent(name, world)
 
     return agent
 
@@ -106,44 +54,6 @@ def show_report(agent: Agent):
         print(
             f"## {practice:20} / occur: {num_occurences:5} / time: {total_time:5} / avg: {total_time/num_occurences:.5}"
         )
-
-
-def sigmoid(x):
-    return 1 / (1 + math.exp(-x))
-
-
-def relu(x):
-    if x < 0:
-        return 0
-    else:
-        return x
-
-
-def weightedSalienceFunction(
-    context: Context, weights: Dict[Tuple[str, Any], Tuple[float, float]]
-) -> float:
-    features = context.get_all_features()
-
-    total_salience = 0
-
-    for w_label, weight in weights.items():
-        total_salience += sigmoid(
-            context.get_salience_of_feature_by_label_and_value(w_label[0], w_label[1])
-            * weight[0]
-            + weight[1]
-        )
-
-    return total_salience / len(weights)
-
-
-def create_random_salience_vector(
-    features: List[Tuple[str, Any]],
-) -> Dict[List[Tuple[str, Any]], Tuple[float, float]]:
-
-    dict = {}
-    for feature in features:
-        dict[feature] = (random.random(), random.random())
-    return dict
 
 
 if __name__ == "__main__":
@@ -192,26 +102,13 @@ if __name__ == "__main__":
     w1.place_entity(house2_bed, house2)
     w1.place_entity(house3_bed, house3)
 
-    # Define Feature Vector
-    features = []
-    features.append("TIME_OF_DAY")
-    features.append(f"AT_{house1.name}")
-    features.append(f"AT_{house2.name}")
-    features.append(f"AT_{house3.name}")
-    features.append(f"AT_{square.name}")
-    features.append(f"AT_{path1.name}")
-    features.append(f"AT_{path2.name}")
-    features.append(f"AT_{path3.name}")
-    features.append(f"AT_{workplace.name}")
-
     # Create Agent 1
     agent_1 = create_base_agent(name="Agent 1", world=w1, work=workplace, home=house1)
-
     agent_2 = create_base_agent(name="Agent 2", world=w1, work=workplace, home=house2)
 
     # Simulate
     NUM_TICKS = 24000
-    NUM_TICKS_TO_LOG_COMMIT = 4000
+    NUM_TICKS_TO_LOG_COMMIT = 10000
 
     print("Starting Simulation...")
     start = datetime.datetime.now()

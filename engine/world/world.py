@@ -4,7 +4,6 @@ from typing import Dict, List, Optional
 import matplotlib.pyplot as plt
 import networkx as nx
 
-from ..agents import Agent, Context, Feature
 from ..entities import Entity
 from .location import Location
 
@@ -22,7 +21,6 @@ class EntityDetails:
 
 
 class World:
-    __agents: List[Agent]
     __entities: List[Entity]
     __locations: List[Location]
     __locations_graph: nx.Graph
@@ -31,29 +29,11 @@ class World:
 
     def __init__(self, logger) -> None:
         self.__entities = []
-        self.__agents = []
         self.__locations = []
         self.__entity_details = {}
         self.__locations_graph = nx.Graph()
         self.__time = 0
         self.__logger = logger
-
-    # Agent Management
-
-    def register_agent(self, agent: Agent) -> None:
-
-        if agent in self.__agents:
-            raise Exception("Trying to register agent already registered!")
-
-        self.register_entity(agent)
-        self.__agents.append(agent)
-
-    def unregister_agent(self, agent: Agent) -> None:
-        if agent not in self.__agents:
-            raise Exception("Trying to unregister agent not registered!")
-
-        self.unregister_entity(agent)
-        self.__agents.remove(agent)
 
     # Entity Management
 
@@ -148,17 +128,17 @@ class World:
         return path
 
     def move_entity_to_location(self, entity: Entity, destination: Location) -> None:
-        agent_location = self.get_entity_location(entity)
+        entity_location = self.get_entity_location(entity)
 
-        if agent_location is None:
+        if entity_location is None:
             raise Exception("Trying to move entity before placing it in the world")
 
-        if destination not in self.__locations_graph.adj[agent_location]:
+        if destination not in self.__locations_graph.adj[entity_location]:
             raise Exception("Trying to move to location not adjacent")
 
         time = self.get_time_since_last_movement(entity)
 
-        if time < agent_location.min_time_inside:
+        if time < entity_location.min_time_inside:
             raise Exception(
                 "Attempting to move before spending the minimum time inside a location"
             )
@@ -205,31 +185,6 @@ class World:
                 entities_per_location[details.location] = [entity]
             else:
                 entities_per_location[details.location].append(entity)
-
-        for agent in self.__agents:
-
-            context = Context()
-
-            # Time of Day
-            context.add_feature(
-                Feature("TIME_OF_DAY", None, (self.__time % 24000) / 24000)
-            )
-
-            # Location
-            location = self.get_entity_location(agent)
-            if location is not None:
-                context.add_feature(Feature("InsideLocation", location, 1))
-
-                # Add adjacent locations
-                for adj_location in self.__locations_graph.adj[location]:
-                    context.add_feature(Feature("NearLocation", adj_location, 1))
-
-                # Entities in Location
-                if location in entities_per_location:
-                    for entity in entities_per_location[location]:
-                        context.add_feature(Feature("NearEntity", entity, 1))
-
-            agent.set_context(context)
 
         for entity in self.__entities:
             self.__entity_details[entity].time_since_last_movement += 1
