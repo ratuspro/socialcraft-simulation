@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
@@ -21,18 +20,12 @@ class EntityDetails:
 
 
 class World:
-    __entities: List[Entity]
-    __locations: List[Location]
-    __locations_graph: nx.Graph
-    __entity_details: Dict[Entity, EntityDetails]
-    __time: int
-
     def __init__(self, logger) -> None:
-        self.__entities = []
-        self.__locations = []
-        self.__entity_details = {}
-        self.__locations_graph = nx.Graph()
-        self.__time = 0
+        self.__entities: List[Entity] = []
+        self.__locations: List[Location] = []
+        self.__entity_details: Dict[Entity, EntityDetails] = {}
+        self.__locations_graph: nx.Graph = nx.Graph()
+        self.__time: int = 0
         self.__logger = logger
 
     # Entity Management
@@ -59,6 +52,10 @@ class World:
         return self.__entity_details[entity].time_since_last_movement
 
     # Location Management
+
+    @property
+    def locations(self) -> List[Location]:
+        return self.__locations
 
     def register_location(self, location: Location) -> None:
         if location in self.__locations:

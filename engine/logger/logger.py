@@ -1,15 +1,13 @@
 from enum import Enum
 from datetime import datetime
 
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Tuple, Type
 
 from sqlalchemy import JSON, create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
-
-from engine.entities import entity
 
 from ..entities import Entity
 from ..world import Location
@@ -92,12 +90,14 @@ class Logger:
             {"location": str(location)},
         )
 
-    def on_practice_starts(self, entity: Entity, practice_name: str) -> None:
+    def on_practice_starts(
+        self, entity: Entity, practice_name: str, properties: Dict[str, Any]
+    ) -> None:
         self.__register_action(
             self.__current_tick,
             LogType.STARTED_PRACTICE,
             str(entity),
-            {"label": practice_name},
+            {"label": practice_name} | properties,
         )
 
     def on_practice_ends(self, entity: Entity, practice_name: str) -> None:
@@ -108,12 +108,14 @@ class Logger:
             {"label": practice_name},
         )
 
-    def log_salience_vecotr(self):
+    def log_salience_vecotr(
+        self, agent: Entity, pratice: Type, weights: Dict[str, Tuple[float, float]]
+    ):
         self.__register_action(
-            -1,
-            LogType.REGISTER_SALIENCE_VECTOR,
-            str(entity),
-            
+            tick=-1,
+            action=LogType.REGISTER_SALIENCE_VECTOR,
+            subject=str(agent),
+            properties={"practice": str(pratice), "weights": str(weights)},
         )
 
     def commit(self):
