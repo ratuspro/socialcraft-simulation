@@ -23,7 +23,7 @@ def calculate_salience(
         if label in feature_vector:
             value = feature_vector[label]
 
-        sum += value * weight[0]  # + weight[1]
+        sum += value * weight[0] + weight[1]
     return sigmoid(sum)
 
 
@@ -55,6 +55,14 @@ class Agent(Entity):
     ):
         self.__weights_per_practice_type[pratice_type] = weigths
         Logger.instance().log_salience_vecotr(self, pratice_type, weigths)
+
+    def get_practices_and_weights(self) -> Dict[str, Dict[str, Tuple[float, float]]]:
+        practices_and_weights = {}
+
+        for practice, weights in self.__weights_per_practice_type.items():
+            practices_and_weights[practice.__name__] = weights
+
+        return practices_and_weights
 
     def tick(self) -> None:
 

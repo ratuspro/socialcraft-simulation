@@ -1,10 +1,55 @@
+from cProfile import run
 import random
 import datetime
-
+import csv
+from typing import List
+import os
 from engine.entities import Object
 from engine.logger import Logger, LogType
 from engine.world import Location, World
 from engine.agents import Agent, ContextManager, MoveToLocation
+
+
+def register_data(contextManager: ContextManager, agents: List[Agent]):
+
+    practices = list(agents[0].get_practices_and_weights().keys())
+    features = contextManager.get_expanded_features()
+
+    field_names = []
+    for practice in practices:
+        for feature in features:
+            field_names.append(f"{practice}_{feature}_weight")
+            field_names.append(f"{practice}_{feature}_bias")
+    field_names.append("distance_travelled")
+    field_names.append("number_places_visited")
+
+    filename = "data.csv"
+    file_exists = os.path.isfile(filename)
+
+    with open(filename, "a", newline="") as csvfile:
+
+        writer = csv.DictWriter(csvfile, fieldnames=field_names)
+
+        if not file_exists:
+            writer.writeheader()
+
+        for agent in agents:
+            agent_dict = {}
+
+            # Practice Weight Vector
+            for practice, weights in agent.get_practices_and_weights().items():
+                for weight_label, weight_values in weights.items():
+                    agent_dict[f"{practice}_{weight_label}_weight"] = weight_values[0]
+                    agent_dict[f"{practice}_{weight_label}_bias"] = weight_values[1]
+
+            entered_actions = Logger.instance().get_action(
+                subject=agent, actions=[LogType.ENTERED_LOCATION]
+            )
+
+            agent_dict["distance_travelled"] = len(set([action.properties["location"] for action in entered_actions]))  # type: ignore
+            agent_dict["number_places_visited"] = len(entered_actions)
+
+            writer.writerow(agent_dict)
 
 
 def create_base_agent(
@@ -28,51 +73,10 @@ def create_base_agent(
     return agent
 
 
-def show_report(agent: Agent):
+def run_world():
 
     logger = Logger.instance()
-
-    entered_actions = logger.get_action(
-        subject=agent, actions=[LogType.ENTERED_LOCATION]
-    )
-
-    print("")
-    print(f"# Stats for {agent.name}:")
-    print(f"## Number of different locations visited: {len(set([action.properties['location'] for action in entered_actions]))}")  # type: ignore
-    print(f"## Number of locations visited: {len(entered_actions)}")  # type: ignore
-
-    # Time per practice
-
-    practices = logger.get_action(
-        subject=agent, actions=[LogType.STARTED_PRACTICE, LogType.FINISHED_PRACTICE]
-    )
-
-    practice_log = []
-    practices_available = set()
-    for i in range(len(practices) // 2):
-        practice_time = practices[i * 2 + 1].tick - practices[i * 2].tick
-        practice_label = str(practices[i * 2].properties)  # type: ignore
-        practice_log.append((practice_label, practice_time))
-        practices_available.add(practice_label)
-
-    print(f"# Stats for {agent.name} practices:")
-    for practice in practices_available:
-        num_occurences = 0
-        total_time = 0
-
-        for log in practice_log:
-            if log[0] == practice:
-                num_occurences += 1
-                total_time += log[1]
-
-        print(
-            f"## {practice:70} / occur: {num_occurences:5} / time: {total_time:5} / avg: {total_time/num_occurences:.5}"
-        )
-
-
-if __name__ == "__main__":
-
-    logger = Logger.instance()
+    logger.new_run()
 
     w1 = World(logger)
 
@@ -102,19 +106,6 @@ if __name__ == "__main__":
     w1.register_location_connection(path2, square)
     w1.register_location_connection(path3, square)
     w1.register_location_connection(path3, workplace)
-
-    # Create Objects
-    house1_bed = Object("Bed", labels=["BED"])
-    house2_bed = Object("Bed", labels=["BED"])
-    house3_bed = Object("Bed", labels=["BED"])
-
-    w1.register_entity(house1_bed)
-    w1.register_entity(house2_bed)
-    w1.register_entity(house3_bed)
-
-    w1.place_entity(house1_bed, house1)
-    w1.place_entity(house2_bed, house2)
-    w1.place_entity(house3_bed, house3)
 
     # Define Context
     cm = ContextManager()
@@ -159,6 +150,10 @@ if __name__ == "__main__":
     print(f"Total simulation took {total_miliseconds/1000} seconds")
     print(f"Average tick took {total_miliseconds/NUM_TICKS} miliseconds")
 
-    show_report(agent_1)
-    show_report(agent_2)
-    show_report(agent_3)
+    register_data(cm, [agent_1, agent_2])
+
+
+if __name__ == "__main__":
+
+    while True:
+        run_world()

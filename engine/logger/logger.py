@@ -79,6 +79,21 @@ class Logger:
         )
         self.__database_session.add(entry)
 
+    def new_run(self) -> None:
+
+        self.__database_file_name = (
+            datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f") + ".db"
+        )
+        self.__database_engine = create_engine(
+            f"sqlite:///{self.__database_file_name}", echo=False
+        )
+        Base.metadata.create_all(self.__database_engine)
+
+        Session = sessionmaker(bind=self.__database_engine)
+        self.__database_session = Session()
+
+        self.__current_tick = 0
+
     def set_tick(self, current_tick: int) -> None:
         self.__current_tick = current_tick
 

@@ -7,11 +7,15 @@ from ..logger import Logger
 from typing import Any, Dict, Tuple, Optional
 
 
-class Practice(ABC):
+class Practice:
     def __init__(self, owner, world: World, label: str) -> None:
         self._owner = owner
         self._world: World = world
         self.__practice_label = label
+
+    @property
+    def label(self) -> str:
+        return self.__practice_label
 
     @abstractmethod
     def tick(self) -> None:
