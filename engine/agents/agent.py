@@ -6,25 +6,12 @@ from engine.agents.practice import Practice
 from ..entities import Entity
 from ..world import World
 from .p_movement import MoveToLocation
-import random
+import numpy
 import math
 
 
-def sigmoid(input):
-    return 1 / (1 + math.exp(-input))
-
-
-def calculate_salience(
-    feature_vector: Dict[str, float], weights_vector: Dict[str, Tuple[float, float]]
-) -> float:
-    sum = 0
-    for label, weight in weights_vector.items():
-        value = 0
-        if label in feature_vector:
-            value = feature_vector[label]
-
-        sum += value * weight[0] + weight[1]
-    return sigmoid(sum)
+def softmax(x, exp_sum):
+    return math.exp(x) / exp_sum
 
 
 class Agent(Entity):
@@ -35,6 +22,7 @@ class Agent(Entity):
         self.__world: World = world
         self.__current_practice = None
         self.__context_manager: ContextManager = context_manager
+
         self.__weights_per_practice_type: Dict[
             Type[Practice], Dict[str, Tuple[float, float]]
         ] = {}
@@ -47,14 +35,12 @@ class Agent(Entity):
     def world(self):
         return self.__world
 
+    @property
+    def context(self):
+        return self.__context_manager
+
     def __str__(self) -> str:
         return f"{self.__name}"
-
-    def set_weights(
-        self, pratice_type: Type[Practice], weigths: Dict[str, Tuple[float, float]]
-    ):
-        self.__weights_per_practice_type[pratice_type] = weigths
-        Logger.instance().log_salience_vecotr(self, pratice_type, weigths)
 
     def get_practices_and_weights(self) -> Dict[str, Dict[str, Tuple[float, float]]]:
         practices_and_weights = {}
@@ -82,7 +68,7 @@ class Agent(Entity):
         ## Generate Context
         features = {}
         features["Time"] = day_time
-        features["CurrentLocation"] = str(current_location)
+        features["CurrentLocation"] = current_location
 
         if self.__current_practice is not None:
             if self.__current_practice.has_ended():
@@ -94,25 +80,27 @@ class Agent(Entity):
 
             best_salience, best_practices = -1, []
 
-            # print(self.name)
+            practice_saliences = {}
+
             for practice in practices:
+                features["TargetLocation"] = practice.targetLocation()
+                practice_saliences[
+                    practice
+                ] = self.__context_manager.calculate_salience(features)
 
-                features["TargetLocation"] = str(practice.targetLocation())
-                vector = self.__context_manager.create_feature_vector(features)
+            sum_saliences = sum(
+                [math.exp(value) for value in practice_saliences.values()]
+            )
 
-                salience = calculate_salience(
-                    vector, self.__weights_per_practice_type[type(practice)]
+            for practice in practice_saliences.keys():
+                practice_saliences[practice] = softmax(
+                    practice_saliences[practice], sum_saliences
                 )
 
-                # print(f"{features} => {salience}")
+            selected_practice = numpy.random.choice(
+                list(practice_saliences.keys()), p=list(practice_saliences.values())
+            )
 
-                if salience > best_salience:
-                    best_salience = salience
-                    best_practices = [practice]
-                elif salience == best_salience:
-                    best_practices.append(practice)
-            # input()
-            new_practice = random.choice(best_practices)
-            if new_practice is not None:
-                self.__current_practice = new_practice
+            if selected_practice is not None:
+                self.__current_practice = selected_practice
                 self.__current_practice.enter()

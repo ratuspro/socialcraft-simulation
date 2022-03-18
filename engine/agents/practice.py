@@ -1,10 +1,10 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 from engine.world.location import Location
 from ..world import World
 from ..logger import Logger
-from typing import Any, Dict, Tuple, Optional
+from typing import Any, Dict, Optional
 
 
 class Practice:
