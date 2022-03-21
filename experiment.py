@@ -9,12 +9,25 @@ import datetime
 import csv
 from typing import List
 import os
+from engine import world
+from engine.agents.p_basic import Sleep
+from engine.entities.entity import Entity
+from engine.entities.object import Object
 from engine.logger import Logger, LogType
 from engine.world import Location, World
 from engine.agents import Agent, ContextRegistry, MoveToLocation, WeightVector
 
 
-def register_data(agents: List[Agent]):
+def create_bed(name: str, world: World, location: Location) -> Object:
+    bed = Object(name)
+    bed.add_attribute("bed", True)
+    bed.add_attribute("occupied", False)
+    world.register_entity(bed)
+    world.place_entity(bed, location)
+    return bed
+
+
+def register_data(agents: List[Agent], locations: List[Location]):
 
     field_names = []
 
@@ -34,7 +47,9 @@ def register_data(agents: List[Agent]):
 
         field_names.append("distance_travelled")
         field_names.append("number_places_visited")
-        field_names.append("number_of_destination")
+
+        for location in locations:
+            field_names.append(f"{location}_ratio_visits")
 
     filename = "data.csv"
     file_exists = os.path.isfile(filename)
@@ -85,7 +100,18 @@ def register_data(agents: List[Agent]):
 
             moveToLocationPractices = filter(lambda action: action.properties["label"] == "MoveToLocation", practice_start_action)  # type: ignore
 
-            agent_dict["number_of_destination"] = len(set([action.properties["destination"] for action in moveToLocationPractices]))  # type: ignore
+            destination_counter = {}
+            for pra in moveToLocationPractices:
+                if not pra.properties["destination"] in destination_counter:
+                    destination_counter[pra.properties["destination"]] = 1
+                else:
+                    destination_counter[pra.properties["destination"]] += 1
+
+            for counter_label, counter_value in destination_counter.items():
+                agent_dict[f"{counter_label}_ratio_visits"] = (
+                    counter_value / agent_dict["number_places_visited"]
+                )
+
             writer.writerow(agent_dict)
 
 
@@ -120,7 +146,7 @@ def create_random_weight_vector(context_registry: ContextRegistry) -> WeightVect
 def create_base_agent(
     name: str,
     world: World,
-    home: Location,
+    starting: Location,
 ) -> Agent:
 
     context_registry = ContextRegistry()
@@ -138,8 +164,10 @@ def create_base_agent(
     agent.add_weight_vector(
         MoveToLocation, create_random_weight_vector(context_registry)
     )
+
+    agent.add_weight_vector(Sleep, create_random_weight_vector(context_registry))
     world.register_entity(agent)
-    world.place_entity(agent, home)
+    world.place_entity(agent, starting)
     return agent
 
 
@@ -189,16 +217,27 @@ def run_world():
     w1.register_location_connection(path5, square)
     w1.register_location_connection(path5, workplace2)
 
+    # Create Beds
+    bed_1 = create_bed("Bed 1", w1, house1)
+    bed_2 = create_bed("Bed 2", w1, house2)
+    bed_3 = create_bed("Bed 3", w1, house3)
+    bed_4 = create_bed("Bed 4", w1, house4)
+    bed_5 = create_bed("Bed 5", w1, house3)
+    bed_6 = create_bed("Bed 6", w1, house4)
+    bed_7 = create_bed("Bed 7", w1, house2)
+    bed_8 = create_bed("Bed 8", w1, house2)
+    bed_9 = create_bed("Bed 9", w1, house1)
+
     # Create Agent 1
-    agent_1 = create_base_agent(name="Agent 1", world=w1, home=house1)
-    agent_2 = create_base_agent(name="Agent 2", world=w1, home=house2)
-    agent_3 = create_base_agent(name="Agent 3", world=w1, home=house3)
-    agent_4 = create_base_agent(name="Agent 4", world=w1, home=house4)
-    agent_5 = create_base_agent(name="Agent 5", world=w1, home=house1)
-    agent_6 = create_base_agent(name="Agent 6", world=w1, home=house1)
-    agent_7 = create_base_agent(name="Agent 7", world=w1, home=house2)
-    agent_8 = create_base_agent(name="Agent 8", world=w1, home=house3)
-    agent_9 = create_base_agent(name="Agent 9", world=w1, home=house3)
+    agent_1 = create_base_agent(name="Agent 1", world=w1, starting=house1)
+    agent_2 = create_base_agent(name="Agent 2", world=w1, starting=house2)
+    agent_3 = create_base_agent(name="Agent 3", world=w1, starting=house3)
+    agent_4 = create_base_agent(name="Agent 4", world=w1, starting=house4)
+    agent_5 = create_base_agent(name="Agent 5", world=w1, starting=house1)
+    agent_6 = create_base_agent(name="Agent 6", world=w1, starting=house1)
+    agent_7 = create_base_agent(name="Agent 7", world=w1, starting=house2)
+    agent_8 = create_base_agent(name="Agent 8", world=w1, starting=house3)
+    agent_9 = create_base_agent(name="Agent 9", world=w1, starting=house3)
 
     # w1.plot_map()
 
@@ -235,6 +274,7 @@ def run_world():
             agent_8,
             agent_9,
         ],
+        [house1, house2, house3, house4, square, workplace1, workplace2],
     )
 
 

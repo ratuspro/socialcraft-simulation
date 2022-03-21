@@ -6,6 +6,7 @@ from engine.world.location import Location
 from ..world import World
 from ..logger import Logger
 from typing import Any, Dict, Optional
+from ..entities import Object
 
 
 class Practice:
@@ -35,4 +36,7 @@ class Practice:
         return {}
 
     def targetLocation(self) -> Optional[Location]:
+        return None
+
+    def targetObject(self) -> Optional[Object]:
         return None

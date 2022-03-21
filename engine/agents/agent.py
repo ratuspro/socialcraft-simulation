@@ -1,10 +1,12 @@
 from __future__ import annotations
 import operator
+
+from engine.agents.p_basic import Sleep
 from ..logger import Logger
 from typing import Dict, Tuple, Type
 from engine.agents.context_registry import WeightVector
 from engine.agents.practice import Practice
-from ..entities import Entity
+from ..entities import Entity, Object
 from ..world import World
 from .p_movement import MoveToLocation
 import numpy
@@ -72,6 +74,9 @@ class Agent(Entity):
         # Inspect the world
         day_time = (self.__world.time % 24000) / 24000
         current_location = self.__world.get_entity_location(self)
+        if current_location is None:
+            raise Exception("Agent not yet placed in the world")
+
         world_locations = self.__world.locations
 
         # Generate the practices
@@ -81,6 +86,16 @@ class Agent(Entity):
         for location in world_locations:
             if location != current_location and not location.is_path:
                 practices.append(MoveToLocation(self, self.__world, location))
+
+        ## Generate sleeping practice
+        for entity in self.__world.get_entities_at_location(self, current_location):
+            if (
+                isinstance(entity, Object)
+                and "bed" in entity.attributes
+                and "occupied" in entity.attributes
+                and not entity.attributes["occupied"]
+            ):
+                practices.append(Sleep(self, self.__world, entity, 2000))
 
         ## Generate Context
         features = {}
