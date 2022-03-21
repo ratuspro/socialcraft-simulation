@@ -4,14 +4,14 @@ import datetime
 from engine.entities import Object
 from engine.logger import Logger, LogType
 from engine.world import Location, World
-from engine.agents import Agent, ContextManager, MoveToLocation
+from engine.agents import Agent, ContextRegistry, MoveToLocation
 
 
 def create_base_agent(
     name: str,
     world: World,
     home: Location,
-    context_manager: ContextManager,
+    context_manager: ContextRegistry,
 ) -> Agent:
     agent = Agent(name, world, context_manager)
     world.register_entity(agent)
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     w1.place_entity(house3_bed, house3)
 
     # Define Context
-    cm = ContextManager()
+    cm = ContextRegistry()
     cm.registerScalarFeature("Time")
     cm.registerCategoricalFeature(
         "CurrentLocation", [str(location) for location in w1.locations], False

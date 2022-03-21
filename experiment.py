@@ -11,22 +11,30 @@ from typing import List
 import os
 from engine.logger import Logger, LogType
 from engine.world import Location, World
-from engine.agents import Agent, ContextManager, MoveToLocation, context_manager
+from engine.agents import Agent, ContextRegistry, MoveToLocation, WeightVector
 
 
 def register_data(agents: List[Agent]):
 
-    practices = list(agents[0].get_practices_and_weights().keys())
-    features = agents[0].context.get_expanded_features()
-
     field_names = []
-    for practice in practices:
-        for feature in features:
-            field_names.append(f"{practice}_{feature}_weight")
-            field_names.append(f"{practice}_{feature}_bias")
-    field_names.append("distance_travelled")
-    field_names.append("number_places_visited")
-    field_names.append("number_of_destination")
+
+    # Get all (practice, weight)
+    for practice, weights in agents[0].get_practice_and_weights().items():
+
+        for feature_label, _ in weights.get_scalar_features().items():
+            field_names.append(f"{practice.label}_{feature_label}_weight")
+            field_names.append(f"{practice.label}_{feature_label}_bias")
+        for feature_label, _ in weights.get_categorical_features().items():
+            field_names.append(
+                f"{practice.label}_{feature_label[0]}_{feature_label[1]}_weight"
+            )
+            field_names.append(
+                f"{practice.label}_{feature_label[0]}_{feature_label[1]}_bias"
+            )
+
+        field_names.append("distance_travelled")
+        field_names.append("number_places_visited")
+        field_names.append("number_of_destination")
 
     filename = "data.csv"
     file_exists = os.path.isfile(filename)
@@ -42,10 +50,27 @@ def register_data(agents: List[Agent]):
             agent_dict = {}
 
             # Practice Weight Vector
-            for practice, weights in agent.get_practices_and_weights().items():
-                for weight_label, weight_values in weights.items():
-                    agent_dict[f"{practice}_{weight_label}_weight"] = weight_values[0]
-                    agent_dict[f"{practice}_{weight_label}_bias"] = weight_values[1]
+            for practice, weights in agent.get_practice_and_weights().items():
+                for (
+                    feature_label,
+                    feature_weight,
+                ) in weights.get_scalar_features().items():
+                    agent_dict[
+                        f"{practice.label}_{feature_label}_weight"
+                    ] = feature_weight.weight
+                    agent_dict[
+                        f"{practice.label}_{feature_label}_bias"
+                    ] = feature_weight.bias
+                for (
+                    feature_label,
+                    feature_weight,
+                ) in weights.get_categorical_features().items():
+                    agent_dict[
+                        f"{practice.label}_{feature_label[0]}_{feature_label[1]}_weight"
+                    ] = feature_weight.weight
+                    agent_dict[
+                        f"{practice.label}_{feature_label[0]}_{feature_label[1]}_bias"
+                    ] = feature_weight.bias
 
             entered_actions = Logger.instance().get_action(
                 subject=agent, actions=[LogType.ENTERED_LOCATION]
@@ -64,45 +89,55 @@ def register_data(agents: List[Agent]):
             writer.writerow(agent_dict)
 
 
+def create_random_weight_vector(context_registry: ContextRegistry) -> WeightVector:
+    weight_vector = context_registry.createEmptyWeightVector()
+
+    weight_vector = context_registry.createEmptyWeightVector()
+
+    weight_vector.registerScalarFeatureWeights(
+        "Time", numpy.random.uniform(-1, 1), numpy.random.uniform(-1, 1)
+    )
+
+    for location in context_registry.getFeatureValues("CurrentLocation"):
+        weight_vector.registerCategorialFeatureWeights(
+            "CurrentLocation",
+            location,
+            numpy.random.uniform(-1, 1),
+            numpy.random.uniform(-1, 1),
+        )
+
+    for location in context_registry.getFeatureValues("TargetLocation"):
+        weight_vector.registerCategorialFeatureWeights(
+            "TargetLocation",
+            location,
+            numpy.random.uniform(-1, 1),
+            numpy.random.uniform(-1, 1),
+        )
+
+    return weight_vector
+
+
 def create_base_agent(
     name: str,
     world: World,
     home: Location,
 ) -> Agent:
 
-    context_manager = ContextManager()
+    context_registry = ContextRegistry()
 
     # Define Features
-    context_manager.registerScalarFeature("Time")
-    context_manager.registerCategoricalFeature(
-        "CurrentLocation", [location for location in world.locations], False
+    context_registry.registerScalarFeature("Time")
+    context_registry.registerCategoricalFeature(
+        "CurrentLocation", [location for location in world.locations]
     )
-    context_manager.registerCategoricalFeature(
-        "TargetLocation", [location for location in world.locations], True
-    )
-
-    # Define Weights
-    context_manager.registerScalarFeatureWeights(
-        "Time", numpy.random.uniform(0, 1), numpy.random.uniform(0, 1)
+    context_registry.registerCategoricalFeature(
+        "TargetLocation", [location for location in world.locations]
     )
 
-    for location in world.locations:
-        context_manager.registerCategorialFeatureWeights(
-            "CurrentLocation",
-            location,
-            numpy.random.uniform(0, 1),
-            numpy.random.uniform(0, 1),
-        )
-
-    for location in world.locations:
-        context_manager.registerCategorialFeatureWeights(
-            "TargetLocation",
-            location,
-            numpy.random.uniform(0, 1),
-            numpy.random.uniform(0, 1),
-        )
-
-    agent = Agent(name, world, context_manager)
+    agent = Agent(name, world)
+    agent.add_weight_vector(
+        MoveToLocation, create_random_weight_vector(context_registry)
+    )
     world.register_entity(agent)
     world.place_entity(agent, home)
     return agent

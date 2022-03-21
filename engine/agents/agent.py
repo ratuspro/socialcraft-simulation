@@ -1,7 +1,8 @@
 from __future__ import annotations
+import operator
 from ..logger import Logger
 from typing import Dict, Tuple, Type
-from engine.agents.context_manager import ContextManager
+from engine.agents.context_registry import WeightVector
 from engine.agents.practice import Practice
 from ..entities import Entity
 from ..world import World
@@ -15,17 +16,11 @@ def softmax(x, exp_sum):
 
 
 class Agent(Entity):
-    def __init__(
-        self, name: str, world: World, context_manager: ContextManager
-    ) -> None:
+    def __init__(self, name: str, world: World) -> None:
         self.__name: str = name
         self.__world: World = world
         self.__current_practice = None
-        self.__context_manager: ContextManager = context_manager
-
-        self.__weights_per_practice_type: Dict[
-            Type[Practice], Dict[str, Tuple[float, float]]
-        ] = {}
+        self.__weight_vector_by_practice: Dict[Type[Practice], WeightVector] = {}
 
     @property
     def name(self):
@@ -35,20 +30,42 @@ class Agent(Entity):
     def world(self):
         return self.__world
 
-    @property
-    def context(self):
-        return self.__context_manager
-
     def __str__(self) -> str:
         return f"{self.__name}"
 
-    def get_practices_and_weights(self) -> Dict[str, Dict[str, Tuple[float, float]]]:
-        practices_and_weights = {}
+    def add_weight_vector(
+        self, practice_type: Type, weight_vector: WeightVector
+    ) -> None:
+        self.__weight_vector_by_practice[practice_type] = weight_vector
 
-        for practice, weights in self.__weights_per_practice_type.items():
-            practices_and_weights[practice.__name__] = weights
+        serialized_vector = {}
+        for (
+            feature_label,
+            feature_weight,
+        ) in weight_vector.get_scalar_features().items():
+            serialized_vector[
+                f"{practice_type.label}_{feature_label}_weight"
+            ] = feature_weight.weight
+            serialized_vector[
+                f"{practice_type.label}_{feature_label}_bias"
+            ] = feature_weight.bias
+        for (
+            feature_label,
+            feature_weight,
+        ) in weight_vector.get_categorical_features().items():
+            serialized_vector[
+                f"{practice_type.label}_{feature_label[0]}_{feature_label[1]}_weight"
+            ] = feature_weight.weight
+            serialized_vector[
+                f"{practice_type.label}_{feature_label[0]}_{feature_label[1]}_bias"
+            ] = feature_weight.bias
 
-        return practices_and_weights
+        Logger.instance().log_salience_vecotr(
+            self, pratice=practice_type, weights=serialized_vector
+        )
+
+    def get_practice_and_weights(self) -> Dict[Type[Practice], WeightVector]:
+        return self.__weight_vector_by_practice
 
     def tick(self) -> None:
 
@@ -78,15 +95,14 @@ class Agent(Entity):
                 self.__current_practice.tick()
         else:
 
-            best_salience, best_practices = -1, []
-
             practice_saliences = {}
 
             for practice in practices:
                 features["TargetLocation"] = practice.targetLocation()
-                practice_saliences[
-                    practice
-                ] = self.__context_manager.calculate_salience(features)
+                weight_vector = self.__weight_vector_by_practice[type(practice)]
+                practice_saliences[practice] = weight_vector.calculate_salience(
+                    features
+                )
 
             sum_saliences = sum(
                 [math.exp(value) for value in practice_saliences.values()]

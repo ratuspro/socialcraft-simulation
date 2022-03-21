@@ -4,13 +4,16 @@ from typing import List, Dict, Any, Optional
 
 
 class MoveToLocation(Practice):
+
+    label: str = "MoveToLocation"
+
     def __init__(
         self,
         owner,
         world: World,
         destination: Location,
     ) -> None:
-        super().__init__(owner, world, "MoveToLocation")
+        super().__init__(owner, world)
         self.__destination: Location = destination
         self.__path: List[Location] = []
 
