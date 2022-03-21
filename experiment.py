@@ -3,6 +3,7 @@ from concurrent.futures import thread
 from contextlib import contextmanager
 from contextvars import Context
 import _thread
+from time import time_ns
 from matplotlib.style import context
 import numpy
 import datetime
@@ -16,6 +17,9 @@ from engine.entities.object import Object
 from engine.logger import Logger, LogType
 from engine.world import Location, World
 from engine.agents import Agent, ContextRegistry, MoveToLocation, WeightVector
+
+NUM_TICKS = 24000
+NUM_TICKS_TO_LOG_COMMIT = 10000
 
 
 def create_bed(name: str, world: World, location: Location) -> Object:
@@ -50,6 +54,9 @@ def register_data(agents: List[Agent], locations: List[Location]):
 
         for location in locations:
             field_names.append(f"{location}_ratio_visits")
+
+        field_names.append("time_sleeping")
+        field_names.append("number_beds_used")
 
     filename = "data.csv"
     file_exists = os.path.isfile(filename)
@@ -95,6 +102,7 @@ def register_data(agents: List[Agent], locations: List[Location]):
                 subject=agent, actions=[LogType.STARTED_PRACTICE]
             )
 
+            # Movement Related Metrics
             agent_dict["distance_travelled"] = len(set([action.properties["location"] for action in entered_actions]))  # type: ignore
             agent_dict["number_places_visited"] = len(entered_actions)
 
@@ -107,17 +115,42 @@ def register_data(agents: List[Agent], locations: List[Location]):
                 else:
                     destination_counter[pra.properties["destination"]] += 1
 
-            for counter_label, counter_value in destination_counter.items():
-                agent_dict[f"{counter_label}_ratio_visits"] = (
-                    counter_value / agent_dict["number_places_visited"]
+            for location in locations:
+                if str(location) not in destination_counter:
+                    agent_dict[f"{location}_ratio_visits"] = 0
+                else:
+                    agent_dict[f"{location}_ratio_visits"] = (
+                        destination_counter[str(location)]
+                        / agent_dict["number_places_visited"]
+                    )
+
+            # Time sleeping
+            all_practices = Logger.instance().get_action(
+                subject=agent,
+                actions=[LogType.STARTED_PRACTICE, LogType.FINISHED_PRACTICE],
+            )
+
+            sleeping_practices = list(filter(lambda action: action.properties["label"] == "Sleep", all_practices))  # type: ignore
+
+            time_sleeping = 0
+            bed_counter = {}
+
+            for i in range(0, (len(sleeping_practices) // 2)):
+                time_sleeping += (
+                    sleeping_practices[i * 2 + 1].tick - sleeping_practices[i * 2].tick
                 )
+                if sleeping_practices[i * 2].properties["bed"] in bed_counter:
+                    bed_counter[sleeping_practices[i * 2].properties["bed"]] += 1
+                else:
+                    bed_counter[sleeping_practices[i * 2].properties["bed"]] = 1
+
+            agent_dict["time_sleeping"] = time_sleeping / NUM_TICKS
+            agent_dict["number_beds_used"] = len(bed_counter)
 
             writer.writerow(agent_dict)
 
 
 def create_random_weight_vector(context_registry: ContextRegistry) -> WeightVector:
-    weight_vector = context_registry.createEmptyWeightVector()
-
     weight_vector = context_registry.createEmptyWeightVector()
 
     weight_vector.registerScalarFeatureWeights(
@@ -140,6 +173,14 @@ def create_random_weight_vector(context_registry: ContextRegistry) -> WeightVect
             numpy.random.uniform(-1, 1),
         )
 
+    for entity in context_registry.getFeatureValues("TargetEntity"):
+        weight_vector.registerCategorialFeatureWeights(
+            "TargetEntity",
+            entity,
+            numpy.random.uniform(-1, 1),
+            numpy.random.uniform(-1, 1),
+        )
+
     return weight_vector
 
 
@@ -149,26 +190,16 @@ def create_base_agent(
     starting: Location,
 ) -> Agent:
 
-    context_registry = ContextRegistry()
-
-    # Define Features
-    context_registry.registerScalarFeature("Time")
-    context_registry.registerCategoricalFeature(
-        "CurrentLocation", [location for location in world.locations]
-    )
-    context_registry.registerCategoricalFeature(
-        "TargetLocation", [location for location in world.locations]
-    )
-
     agent = Agent(name, world)
-    agent.add_weight_vector(
-        MoveToLocation, create_random_weight_vector(context_registry)
-    )
-
-    agent.add_weight_vector(Sleep, create_random_weight_vector(context_registry))
     world.register_entity(agent)
     world.place_entity(agent, starting)
     return agent
+
+
+def add_random_weights_to_practices(agent: Agent, context: ContextRegistry) -> None:
+    agent.add_weight_vector(MoveToLocation, create_random_weight_vector(context))
+
+    agent.add_weight_vector(Sleep, create_random_weight_vector(context))
 
 
 def run_world():
@@ -239,12 +270,32 @@ def run_world():
     agent_8 = create_base_agent(name="Agent 8", world=w1, starting=house3)
     agent_9 = create_base_agent(name="Agent 9", world=w1, starting=house3)
 
+    # Define Features
+    context_registry = ContextRegistry()
+    context_registry.registerScalarFeature("Time")
+    context_registry.registerCategoricalFeature(
+        "CurrentLocation", [location for location in w1.locations]
+    )
+    context_registry.registerCategoricalFeature(
+        "TargetLocation", [location for location in w1.locations]
+    )
+    context_registry.registerCategoricalFeature(
+        "TargetEntity", [entity for entity in w1.entities]
+    )
+
+    add_random_weights_to_practices(agent_1, context_registry)
+    add_random_weights_to_practices(agent_2, context_registry)
+    add_random_weights_to_practices(agent_3, context_registry)
+    add_random_weights_to_practices(agent_4, context_registry)
+    add_random_weights_to_practices(agent_5, context_registry)
+    add_random_weights_to_practices(agent_6, context_registry)
+    add_random_weights_to_practices(agent_7, context_registry)
+    add_random_weights_to_practices(agent_8, context_registry)
+    add_random_weights_to_practices(agent_9, context_registry)
+
     # w1.plot_map()
 
     # Simulate
-    NUM_TICKS = 24000
-    NUM_TICKS_TO_LOG_COMMIT = 10000
-
     print("Starting Simulation...")
     start = datetime.datetime.now()
     for i in range(NUM_TICKS):

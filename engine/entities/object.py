@@ -15,3 +15,6 @@ class Object(Entity):
 
     def tick(self) -> None:
         return super().tick()
+
+    def __str__(self) -> str:
+        return self.__name

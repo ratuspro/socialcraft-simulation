@@ -109,7 +109,7 @@ class WeightVector:
             elif isinstance(feature_defintion, CategoricalFeature):
                 if features_values[label] is None:
                     continue
-
+                
                 sum += feature_defintion.calculateValue(
                     self.__categorical_feature_weight[label, features_values[label]],
                     features_values[label],

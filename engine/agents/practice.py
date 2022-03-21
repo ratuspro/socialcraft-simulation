@@ -38,5 +38,5 @@ class Practice:
     def targetLocation(self) -> Optional[Location]:
         return None
 
-    def targetObject(self) -> Optional[Object]:
+    def targetEntity(self) -> Optional[Object]:
         return None
