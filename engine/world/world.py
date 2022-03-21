@@ -163,7 +163,7 @@ class World:
 
         self.__logger.on_entity_entered(entity, location)
 
-    def get_entity_location(self, entity: Entity) -> Location | None:
+    def get_entity_location(self, entity: Entity) -> Optional[Location]:
         if entity not in self.__entities:
             raise Exception("Getting location of entity not yet registered...")
 
