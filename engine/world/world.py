@@ -31,6 +31,9 @@ class World:
         self.__logger = logger
 
     # Entity Management
+    @property
+    def entities(self) -> List[Entity]:
+        return self.__entities
 
     def register_entity(self, entity: Entity) -> None:
         if entity in self.__entities:
@@ -52,6 +55,53 @@ class World:
 
     def get_time_since_last_movement(self, entity: Entity) -> int:
         return self.__entity_details[entity].time_since_last_movement
+
+    def change_entity_attribute(
+        self, actor: Entity, target: Entity, label: str, value: Any
+    ) -> None:
+        actor_location = self.get_entity_location(actor)
+        target_location = self.get_entity_location(target)
+
+        if target_location is None:
+            raise Exception(
+                "Trying to change entity label before placing it in the world"
+            )
+
+        if actor_location is None:
+            raise Exception(
+                "Actor trying to change entity label not yet placed in the world"
+            )
+
+        if target_location != actor_location:
+            raise Exception(
+                "Trying to change entity when actor is not in the same location..."
+            )
+
+        target.add_attribute(label, value)
+
+    def get_entity_attribute(self, actor: Entity, target: Entity, label: str) -> Any:
+        actor_location = self.get_entity_location(actor)
+        target_location = self.get_entity_location(target)
+
+        if target_location is None:
+            raise Exception(
+                "Trying to get entity attribute before placing it in the world"
+            )
+
+        if actor_location is None:
+            raise Exception(
+                "Actor trying to get entity attribute not yet placed in the world"
+            )
+
+        if target_location != actor_location:
+            raise Exception(
+                "Trying to get entity when actor is not in the same location..."
+            )
+
+        if label in target.attributes:
+            return target.attributes[label]
+        else:
+            return None
 
     # Location Management
 
@@ -113,7 +163,7 @@ class World:
 
         self.__logger.on_entity_entered(entity, location)
 
-    def get_entity_location(self, entity: Entity) -> Location | None:
+    def get_entity_location(self, entity: Entity) -> Optional[Location]:
         if entity not in self.__entities:
             raise Exception("Getting location of entity not yet registered...")
 
@@ -164,53 +214,6 @@ class World:
             print(f" ^-> Entities [{entities_string}]")
 
     # Entity Management
-
-    def change_entity_attribute(
-        self, actor: Entity, target: Entity, label: str, value: Any
-    ) -> None:
-        actor_location = self.get_entity_location(actor)
-        target_location = self.get_entity_location(target)
-
-        if target_location is None:
-            raise Exception(
-                "Trying to change entity label before placing it in the world"
-            )
-
-        if actor_location is None:
-            raise Exception(
-                "Actor trying to change entity label not yet placed in the world"
-            )
-
-        if target_location != actor_location:
-            raise Exception(
-                "Trying to change entity when actor is not in the same location..."
-            )
-
-        target.add_attribute(label, value)
-
-    def get_entity_attribute(self, actor: Entity, target: Entity, label: str) -> Any:
-        actor_location = self.get_entity_location(actor)
-        target_location = self.get_entity_location(target)
-
-        if target_location is None:
-            raise Exception(
-                "Trying to get entity attribute before placing it in the world"
-            )
-
-        if actor_location is None:
-            raise Exception(
-                "Actor trying to get entity attribute not yet placed in the world"
-            )
-
-        if target_location != actor_location:
-            raise Exception(
-                "Trying to get entity when actor is not in the same location..."
-            )
-
-        if label in target.attributes:
-            return target.attributes[label]
-        else:
-            return None
 
     def get_entities_at_location(
         self, perceiver: Entity, location: Location

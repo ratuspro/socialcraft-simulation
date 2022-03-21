@@ -1,8 +1,7 @@
-from xml.dom.minidom import Entity
 from .practice import Practice
-from ..world import Location, World
-from typing import List, Dict, Any, Optional
-from ..entities import Object
+from ..world import World
+from typing import Dict, Any, Optional
+from ..entities import Entity
 
 
 class Sleep(Practice):
@@ -10,10 +9,10 @@ class Sleep(Practice):
     label: str = "Sleep"
 
     def __init__(
-        self, owner, world: World, bed: Object, min_sleeping_time: int
+        self, owner, world: World, bed: Entity, min_sleeping_time: int
     ) -> None:
         super().__init__(owner, world)
-        self.__bed: Object = bed
+        self.__bed: Entity = bed
         self.__min_sleeping_time = min_sleeping_time
         self.__timer = 0
 
@@ -35,5 +34,5 @@ class Sleep(Practice):
     def properties(self) -> Dict[str, Any]:
         return super().properties() | {"bed": str(self.__bed)}
 
-    def targetLocation(self) -> Optional[Location]:
-        return None
+    def targetEntity(self) -> Optional[Entity]:
+        return self.__bed

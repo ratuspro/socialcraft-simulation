@@ -113,6 +113,7 @@ class Agent(Entity):
             practice_saliences = {}
 
             for practice in practices:
+                features["TargetEntity"] = practice.targetEntity()
                 features["TargetLocation"] = practice.targetLocation()
                 weight_vector = self.__weight_vector_by_practice[type(practice)]
                 practice_saliences[practice] = weight_vector.calculate_salience(
