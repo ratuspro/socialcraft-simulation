@@ -49,14 +49,14 @@ def register_data(agents: List[Agent], locations: List[Location]):
                 f"{practice.label}_{feature_label[0]}_{feature_label[1]}_bias"
             )
 
-        field_names.append("distance_travelled")
-        field_names.append("number_places_visited")
+    field_names.append("distance_travelled")
+    field_names.append("number_places_visited")
 
-        for location in locations:
-            field_names.append(f"{location}_ratio_visits")
+    for location in locations:
+        field_names.append(f"{location}_ratio_visits")
 
-        field_names.append("time_sleeping")
-        field_names.append("number_beds_used")
+    field_names.append("time_sleeping")
+    field_names.append("number_beds_used")
 
     filename = "data.csv"
     file_exists = os.path.isfile(filename)
@@ -119,10 +119,9 @@ def register_data(agents: List[Agent], locations: List[Location]):
                 if str(location) not in destination_counter:
                     agent_dict[f"{location}_ratio_visits"] = 0
                 else:
-                    agent_dict[f"{location}_ratio_visits"] = (
-                        destination_counter[str(location)]
-                        / agent_dict["number_places_visited"]
-                    )
+                    agent_dict[f"{location}_ratio_visits"] = destination_counter[
+                        str(location)
+                    ] / len(entered_actions)
 
             # Time sleeping
             all_practices = Logger.instance().get_action(
