@@ -11,8 +11,7 @@ import csv
 from typing import List
 import os
 from engine import world
-from engine.agents.p_basic import Sleep
-from engine.entities.entity import Entity
+from engine.agents.p_basic import Idle, Sleep
 from engine.entities.object import Object
 from engine.logger import Logger, LogType
 from engine.world import Location, World
@@ -199,6 +198,8 @@ def add_random_weights_to_practices(agent: Agent, context: ContextRegistry) -> N
     agent.add_weight_vector(MoveToLocation, create_random_weight_vector(context))
 
     agent.add_weight_vector(Sleep, create_random_weight_vector(context))
+
+    agent.add_weight_vector(Idle, create_random_weight_vector(context))
 
 
 def run_world():

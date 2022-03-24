@@ -1,14 +1,14 @@
 from __future__ import annotations
-import operator
 
-from engine.agents.p_basic import Sleep
 from ..logger import Logger
-from typing import Dict, Tuple, Type
+from typing import Dict, Type
 from engine.agents.context_registry import WeightVector
 from engine.agents.practice import Practice
 from ..entities import Entity, Object
 from ..world import World
 from .p_movement import MoveToLocation
+from .p_basic import Sleep, Idle
+
 import numpy
 import math
 
@@ -81,6 +81,9 @@ class Agent(Entity):
 
         # Generate the practices
         practices = []
+
+        ## Generate Idle
+        practices.append(Idle(self, self.__world, 5))
 
         ## Generate moving to practices
         for location in world_locations:

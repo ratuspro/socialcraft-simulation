@@ -1,6 +1,3 @@
-from tkinter.font import BOLD
-
-
 class Location:
     def __init__(self, name: str, min_time_inside: int, is_path: bool) -> None:
         self.__name: str = name
