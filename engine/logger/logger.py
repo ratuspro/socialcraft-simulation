@@ -1,146 +1,57 @@
-import os
-from datetime import datetime
-from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Type
-
-from sqlalchemy import JSON, Column, Integer, String, create_engine
-from sqlalchemy.engine import Engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session, sessionmaker
-
-from ..entities import Entity
-from ..world import Location
-
-Base = declarative_base()
+from pydoc import doc
+from tinydb import TinyDB, Query
+from typing import List, Dict
 
 
-class LogType(Enum):
-    ENTERED_LOCATION = "entered_location"
-    STARTED_PRACTICE = "started_practice"
-    FINISHED_PRACTICE = "finished_practice"
-    REGISTER_SALIENCE_VECTOR = "register_valence"
+class Entry:
+    def __init__(self, tick: str, type: str, agent: str,  data: Dict[str, str]) -> None:
+        self.__data: Dict[str, str] = data
+        self.__tick: str = tick
+        self.__type: str = type
+        self.__agent: str = agent
 
+    def toDocument(self) -> Dict[str, str]:
+        document = {}
+        document['tick'] = self.__tick
+        document['type'] = self.__type
+        document['agent'] = self.__agent
+        document = document | self.__data
+        return document
 
-class Action(Base):
-
-    __tablename__ = "actions"
-
-    id = Column(Integer, primary_key=True)
-    tick = Column(Integer)
-    action = Column(String)
-    subject = Column(String)
-    properties = Column(JSON, nullable=True)
+    @classmethod
+    def fromDocument(cls, document: Dict[str, str]):
+        return cls(document['tick'], document['type'], document['agent'], {})
 
 
 class Logger:
+    __filepath = ""
     _instance = None
-    __current_tick: int
-    __database_file_name: str
-    __database_session: Session
-    __database_engine: Engine
 
     @classmethod
     def instance(cls):
-        if cls._instance is None:
+        if cls._instance is not None:
             cls._instance = cls.__new__(cls)
+            cls._instance.__buffer = []
+            cls._instance.__db = TinyDB(cls.__filepath)
         return cls._instance
 
+    @classmethod
+    def set_file_path(cls, path):
+        cls.__filepath = path
+
     def __init__(self) -> None:
-        raise RuntimeError("Cannot instanciate Logger directly. Use Logger.instance()")
+        raise RuntimeError(
+            "Cannot instanciate Logger directly. Use Logger.instance()")
 
-    def __register_action(
-        self,
-        tick: int,
-        action: LogType,
-        subject: str,
-        properties: Optional[Dict[str, Any]] = None,
-    ) -> None:
+    def register_entry(self, tick: str, type: str, agent: str,  data: Dict[str, str]) -> None:
+        self.__buffer.append(Entry(tick, type, agent, data))
 
-        if properties is None:
-            properties = {}
+    def commit(self) -> None:
+        for entry in self.__buffer:
+            self.__db.insert(entry.toDocument())
 
-        entry = Action(
-            tick=tick, action=str(action), subject=subject, properties=properties
-        )
-        self.__database_session.add(entry)
+        self.__buffer = []
 
-    def init(self, dir:str) -> None:
-        self.__logs_dir = dir
-        if not os.path.exists(dir):        
-            os.makedirs(dir)
-
-        self.__database_file_name = self.__logs_dir + datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f") + ".db"
-        print(self.__database_file_name)
-        self.__database_engine = create_engine(
-            f"sqlite:///{self.__database_file_name}", echo=False
-        )
-        Base.metadata.create_all(self.__database_engine)
-
-        Session = sessionmaker(bind=self.__database_engine)
-        self.__database_session = Session()
-
-        self.__current_tick = 0
-
-    def set_tick(self, current_tick: int) -> None:
-        self.__current_tick = current_tick
-
-    def on_entity_entered(self, entity: Entity, location: Location) -> None:
-        self.__register_action(
-            self.__current_tick,
-            LogType.ENTERED_LOCATION,
-            str(entity),
-            {"location": str(location)},
-        )
-
-    def on_practice_starts(
-        self, entity: Entity, practice_name: str, properties: Dict[str, Any]
-    ) -> None:
-        self.__register_action(
-            self.__current_tick,
-            LogType.STARTED_PRACTICE,
-            str(entity),
-            {"label": practice_name} | properties,
-        )
-
-    def on_practice_ends(self, entity: Entity, practice_name: str) -> None:
-        self.__register_action(
-            self.__current_tick,
-            LogType.FINISHED_PRACTICE,
-            str(entity),
-            {"label": practice_name},
-        )
-
-    def log_salience_vecotr(
-        self, agent: Entity, pratice: Type, weights: Dict[str, Tuple[float, float]]
-    ):
-        self.__register_action(
-            tick=-1,
-            action=LogType.REGISTER_SALIENCE_VECTOR,
-            subject=str(agent),
-            properties={"practice": str(pratice), "weights": str(weights)},
-        )
-
-    def commit(self):
-        self.__database_session.commit()
-
-    def get_action(
-        self,
-        tick: Optional[int] = None,
-        actions: Optional[List[LogType]] = None,
-        subject: Optional[Entity] = None,
-    ) -> List[Action]:
-        query = self.__database_session.query(Action)
-
-        if tick is not None:
-            query = query.filter(Action.tick == tick)
-
-        if actions is not None and len(actions) > 0:
-
-            query = query.filter(
-                Action.action.in_([str(logtype) for logtype in actions])
-            )
-
-        if subject is not None:
-            query = query.filter(Action.subject == str(subject))
-
-        return query.all()
+    def get_all_from_agent(self, agent: str) -> List:
+        entryQ = Query()
+        return self.__db.search(entryQ.agent == agent)

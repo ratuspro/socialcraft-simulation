@@ -1,6 +1,7 @@
 import csv
-import datetime
+from datetime import datetime
 import os
+import random
 from typing import List
 
 import numpy
@@ -8,7 +9,7 @@ import numpy
 from engine.agents import Agent, ContextRegistry, MoveToLocation, WeightVector
 from engine.agents.p_basic import Idle, Sleep
 from engine.entities.object import Object
-from engine.logger import Logger, LogType
+from engine.logger import Logger
 from engine.world import Location, World
 
 NUM_TICKS = 24000
@@ -22,124 +23,6 @@ def create_bed(name: str, world: World, location: Location) -> Object:
     world.register_entity(bed)
     world.place_entity(bed, location)
     return bed
-
-
-def register_data(agents: List[Agent], locations: List[Location]):
-
-    field_names = []
-
-    # Get all (practice, weight)
-    for practice, weights in agents[0].get_practice_and_weights().items():
-
-        for feature_label, _ in weights.get_scalar_features().items():
-            field_names.append(f"{practice.label}_{feature_label}_weight")
-            field_names.append(f"{practice.label}_{feature_label}_bias")
-        for feature_label, _ in weights.get_categorical_features().items():
-            field_names.append(
-                f"{practice.label}_{feature_label[0]}_{feature_label[1]}_weight"
-            )
-            field_names.append(
-                f"{practice.label}_{feature_label[0]}_{feature_label[1]}_bias"
-            )
-
-    field_names.append("distance_travelled")
-    field_names.append("number_places_visited")
-
-    for location in locations:
-        field_names.append(f"{location}_ratio_visits")
-
-    field_names.append("time_sleeping")
-    field_names.append("number_beds_used")
-
-    filename = "data.csv"
-    file_exists = os.path.isfile(filename)
-
-    with open(filename, "a", newline="") as csvfile:
-
-        writer = csv.DictWriter(csvfile, fieldnames=field_names)
-
-        if not file_exists:
-            writer.writeheader()
-
-        for agent in agents:
-            agent_dict = {}
-
-            # Practice Weight Vector
-            for practice, weights in agent.get_practice_and_weights().items():
-                for (
-                    feature_label,
-                    feature_weight,
-                ) in weights.get_scalar_features().items():
-                    agent_dict[
-                        f"{practice.label}_{feature_label}_weight"
-                    ] = feature_weight.weight
-                    agent_dict[
-                        f"{practice.label}_{feature_label}_bias"
-                    ] = feature_weight.bias
-                for (
-                    feature_label,
-                    feature_weight,
-                ) in weights.get_categorical_features().items():
-                    agent_dict[
-                        f"{practice.label}_{feature_label[0]}_{feature_label[1]}_weight"
-                    ] = feature_weight.weight
-                    agent_dict[
-                        f"{practice.label}_{feature_label[0]}_{feature_label[1]}_bias"
-                    ] = feature_weight.bias
-
-            entered_actions = Logger.instance().get_action(
-                subject=agent, actions=[LogType.ENTERED_LOCATION]
-            )
-
-            practice_start_action = Logger.instance().get_action(
-                subject=agent, actions=[LogType.STARTED_PRACTICE]
-            )
-
-            # Movement Related Metrics
-            agent_dict["distance_travelled"] = len(set([action.properties["location"] for action in entered_actions]))  # type: ignore
-            agent_dict["number_places_visited"] = len(entered_actions)
-
-            moveToLocationPractices = filter(lambda action: action.properties["label"] == "MoveToLocation", practice_start_action)  # type: ignore
-
-            destination_counter = {}
-            for pra in moveToLocationPractices:
-                if not pra.properties["destination"] in destination_counter:
-                    destination_counter[pra.properties["destination"]] = 1
-                else:
-                    destination_counter[pra.properties["destination"]] += 1
-
-            for location in locations:
-                if str(location) not in destination_counter:
-                    agent_dict[f"{location}_ratio_visits"] = 0
-                else:
-                    agent_dict[f"{location}_ratio_visits"] = destination_counter[
-                        str(location)
-                    ] / len(entered_actions)
-
-            # Time sleeping
-            all_practices = Logger.instance().get_action(
-                subject=agent,
-                actions=[LogType.STARTED_PRACTICE, LogType.FINISHED_PRACTICE],
-            )
-
-            sleeping_practices = list(filter(lambda action: action.properties["label"] == "Sleep", all_practices))  # type: ignore
-
-            time_sleeping = 0
-            bed_counter = {}
-
-            for i in range(0, (len(sleeping_practices) // 2)):
-                time_sleeping += (
-                    sleeping_practices[i * 2 + 1].tick - sleeping_practices[i * 2].tick
-                )
-                if sleeping_practices[i * 2].properties["bed"] in bed_counter:
-                    bed_counter[sleeping_practices[i * 2].properties["bed"]] += 1
-                else:
-                    bed_counter[sleeping_practices[i * 2].properties["bed"]] = 1
-
-            agent_dict["time_sleeping"] = time_sleeping / NUM_TICKS
-            agent_dict["number_beds_used"] = len(bed_counter)
-
-            writer.writerow(agent_dict)
 
 
 def create_random_weight_vector(context_registry: ContextRegistry) -> WeightVector:
@@ -174,7 +57,8 @@ def create_random_weight_vector(context_registry: ContextRegistry) -> WeightVect
         )
 
     weight_vector.registerScalarFeatureWeights(
-        "NumberNearbyAgent", numpy.random.uniform(-1, 1), numpy.random.uniform(-1, 1)
+        "NumberNearbyAgent", numpy.random.uniform(
+            -1, 1), numpy.random.uniform(-1, 1)
     )
 
     return weight_vector
@@ -193,17 +77,18 @@ def create_base_agent(
 
 
 def add_random_weights_to_practices(agent: Agent, context: ContextRegistry) -> None:
-    agent.add_weight_vector(MoveToLocation, create_random_weight_vector(context))
+    agent.add_weight_vector(
+        MoveToLocation, create_random_weight_vector(context))
 
     agent.add_weight_vector(Sleep, create_random_weight_vector(context))
 
     agent.add_weight_vector(Idle, create_random_weight_vector(context))
 
 
-def run_world(logs_dir_path: str):
+def run_world(logs_path: str):
 
+    Logger.set_file_path(path=logs_path)
     logger = Logger.instance()
-    logger.init(dir=logs_dir_path)
 
     w1 = World(logger)
 
@@ -267,7 +152,8 @@ def run_world(logs_dir_path: str):
     agent_7 = create_base_agent(name="Agent7", world=w1, starting=house2)
     agent_8 = create_base_agent(name="Agent8", world=w1, starting=house3)
     agent_9 = create_base_agent(name="Agent9", world=w1, starting=house3)
-    agents = [ agent_1, agent_2, agent_3, agent_4, agent_5, agent_6, agent_7, agent_8, agent_9]
+    agents = [agent_1, agent_2, agent_3, agent_4,
+              agent_5, agent_6, agent_7, agent_8, agent_9]
 
     # Define Features
     context_registry = ContextRegistry()
@@ -313,7 +199,9 @@ def run_world(logs_dir_path: str):
     print(f"Total simulation took {total_miliseconds/1000} seconds")
     print(f"Average tick took {total_miliseconds/NUM_TICKS} miliseconds")
 
+
 if __name__ == "__main__":
-    
+
     while True:
-        run_world(logs_dir_path='logs/')
+        run_world(
+            f"logs/{ datetime.now().strftime('%Y_%m_%d_%H_%M_%S_%f')}_{random.randint(0,9999)}.db")
