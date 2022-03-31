@@ -1,21 +1,15 @@
-from cProfile import run
-from concurrent.futures import thread
-from contextlib import contextmanager
-from contextvars import Context
-import _thread
-from time import time_ns
-from matplotlib.style import context
-import numpy
-import datetime
 import csv
-from typing import List
+import datetime
 import os
-from engine import world
+from typing import List
+
+import numpy
+
+from engine.agents import Agent, ContextRegistry, MoveToLocation, WeightVector
 from engine.agents.p_basic import Idle, Sleep
 from engine.entities.object import Object
 from engine.logger import Logger, LogType
 from engine.world import Location, World
-from engine.agents import Agent, ContextRegistry, MoveToLocation, WeightVector
 
 NUM_TICKS = 24000
 NUM_TICKS_TO_LOG_COMMIT = 10000
@@ -249,15 +243,15 @@ def run_world():
     w1.register_location_connection(path5, workplace2)
 
     # Create Beds
-    bed_1 = create_bed("Bed 1", w1, house1)
-    bed_2 = create_bed("Bed 2", w1, house2)
-    bed_3 = create_bed("Bed 3", w1, house3)
-    bed_4 = create_bed("Bed 4", w1, house4)
-    bed_5 = create_bed("Bed 5", w1, house3)
-    bed_6 = create_bed("Bed 6", w1, house4)
-    bed_7 = create_bed("Bed 7", w1, house2)
-    bed_8 = create_bed("Bed 8", w1, house2)
-    bed_9 = create_bed("Bed 9", w1, house1)
+    create_bed("Bed 1", w1, house1)
+    create_bed("Bed 2", w1, house2)
+    create_bed("Bed 3", w1, house3)
+    create_bed("Bed 4", w1, house4)
+    create_bed("Bed 5", w1, house3)
+    create_bed("Bed 6", w1, house4)
+    create_bed("Bed 7", w1, house2)
+    create_bed("Bed 8", w1, house2)
+    create_bed("Bed 9", w1, house1)
 
     # Create Agent 1
     agent_1 = create_base_agent(name="Agent 1", world=w1, starting=house1)
@@ -274,13 +268,13 @@ def run_world():
     context_registry = ContextRegistry()
     context_registry.registerScalarFeature("Time")
     context_registry.registerCategoricalFeature(
-        "CurrentLocation", [location for location in w1.locations]
+        "CurrentLocation", w1.locations
     )
     context_registry.registerCategoricalFeature(
-        "TargetLocation", [location for location in w1.locations]
+        "TargetLocation", w1.locations
     )
     context_registry.registerCategoricalFeature(
-        "TargetEntity", [entity for entity in w1.entities]
+        "TargetEntity", w1.entities
     )
 
     add_random_weights_to_practices(agent_1, context_registry)
