@@ -101,9 +101,10 @@ class Agent(Entity):
                 practices.append(Sleep(self, self.__world, entity, 2000))
 
         ## Generate Context
-        features = {}
+        features = {} 
         features["Time"] = day_time
         features["CurrentLocation"] = current_location
+        features["NumberNearbyAgent"] = len(list(filter(lambda entity: isinstance(entity, Agent), self.__world.get_entities_at_location(self, current_location))))
 
         if self.__current_practice is not None:
             if self.__current_practice.has_ended():

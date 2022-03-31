@@ -154,6 +154,6 @@ class ContextRegistry:
 
     def getFeatureValues(self, label: str) -> List[Any]:
         if label not in self.__feature_definitions:
-            raise Exception("Attempting to get values of feature not yet registered...")
+            raise Exception(f"Attempting to get values of feature -{label}- not yet registered...")
 
         return self.__feature_definitions[label].possible_values

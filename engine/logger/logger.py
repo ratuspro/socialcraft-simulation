@@ -1,17 +1,15 @@
-from enum import Enum
+import os
 from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple, Type
 
-from typing import Any, Dict, Optional, List, Tuple, Type
-
-from sqlalchemy import JSON, create_engine
+from sqlalchemy import JSON, Column, Integer, String, create_engine
 from sqlalchemy.engine import Engine
-from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from ..entities import Entity
 from ..world import Location
-
 
 Base = declarative_base()
 
@@ -45,19 +43,6 @@ class Logger:
     def instance(cls):
         if cls._instance is None:
             cls._instance = cls.__new__(cls)
-
-            cls._instance.__database_file_name = (
-                datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f") + ".db"
-            )
-            cls._instance.__database_engine = create_engine(
-                f"sqlite:///{cls._instance.__database_file_name}", echo=False
-            )
-            Base.metadata.create_all(cls._instance.__database_engine)
-
-            Session = sessionmaker(bind=cls._instance.__database_engine)
-            cls._instance.__database_session = Session()
-
-            cls._instance.__current_tick = 0
         return cls._instance
 
     def __init__(self) -> None:
@@ -79,11 +64,13 @@ class Logger:
         )
         self.__database_session.add(entry)
 
-    def new_run(self) -> None:
+    def init(self, dir:str) -> None:
+        self.__logs_dir = dir
+        if not os.path.exists(dir):        
+            os.makedirs(dir)
 
-        self.__database_file_name = (
-            datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f") + ".db"
-        )
+        self.__database_file_name = self.__logs_dir + datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f") + ".db"
+        print(self.__database_file_name)
         self.__database_engine = create_engine(
             f"sqlite:///{self.__database_file_name}", echo=False
         )

@@ -173,6 +173,10 @@ def create_random_weight_vector(context_registry: ContextRegistry) -> WeightVect
             numpy.random.uniform(-1, 1),
         )
 
+    weight_vector.registerScalarFeatureWeights(
+        "NumberNearbyAgent", numpy.random.uniform(-1, 1), numpy.random.uniform(-1, 1)
+    )
+
     return weight_vector
 
 
@@ -196,10 +200,10 @@ def add_random_weights_to_practices(agent: Agent, context: ContextRegistry) -> N
     agent.add_weight_vector(Idle, create_random_weight_vector(context))
 
 
-def run_world():
+def run_world(logs_dir_path: str):
 
     logger = Logger.instance()
-    logger.new_run()
+    logger.init(dir=logs_dir_path)
 
     w1 = World(logger)
 
@@ -254,19 +258,21 @@ def run_world():
     create_bed("Bed 9", w1, house1)
 
     # Create Agent 1
-    agent_1 = create_base_agent(name="Agent 1", world=w1, starting=house1)
-    agent_2 = create_base_agent(name="Agent 2", world=w1, starting=house2)
-    agent_3 = create_base_agent(name="Agent 3", world=w1, starting=house3)
-    agent_4 = create_base_agent(name="Agent 4", world=w1, starting=house4)
-    agent_5 = create_base_agent(name="Agent 5", world=w1, starting=house1)
-    agent_6 = create_base_agent(name="Agent 6", world=w1, starting=house1)
-    agent_7 = create_base_agent(name="Agent 7", world=w1, starting=house2)
-    agent_8 = create_base_agent(name="Agent 8", world=w1, starting=house3)
-    agent_9 = create_base_agent(name="Agent 9", world=w1, starting=house3)
+    agent_1 = create_base_agent(name="Agent1", world=w1, starting=house1)
+    agent_2 = create_base_agent(name="Agent2", world=w1, starting=house2)
+    agent_3 = create_base_agent(name="Agent3", world=w1, starting=house3)
+    agent_4 = create_base_agent(name="Agent4", world=w1, starting=house4)
+    agent_5 = create_base_agent(name="Agent5", world=w1, starting=house1)
+    agent_6 = create_base_agent(name="Agent6", world=w1, starting=house1)
+    agent_7 = create_base_agent(name="Agent7", world=w1, starting=house2)
+    agent_8 = create_base_agent(name="Agent8", world=w1, starting=house3)
+    agent_9 = create_base_agent(name="Agent9", world=w1, starting=house3)
+    agents = [ agent_1, agent_2, agent_3, agent_4, agent_5, agent_6, agent_7, agent_8, agent_9]
 
     # Define Features
     context_registry = ContextRegistry()
     context_registry.registerScalarFeature("Time")
+    context_registry.registerScalarFeature("NumberNearbyAgent")
     context_registry.registerCategoricalFeature(
         "CurrentLocation", w1.locations
     )
@@ -307,23 +313,7 @@ def run_world():
     print(f"Total simulation took {total_miliseconds/1000} seconds")
     print(f"Average tick took {total_miliseconds/NUM_TICKS} miliseconds")
 
-    register_data(
-        [
-            agent_1,
-            agent_2,
-            agent_3,
-            agent_4,
-            agent_5,
-            agent_6,
-            agent_7,
-            agent_8,
-            agent_9,
-        ],
-        [house1, house2, house3, house4, square, workplace1, workplace2],
-    )
-
-
 if __name__ == "__main__":
-
+    
     while True:
-        run_world()
+        run_world(logs_dir_path='logs/')
