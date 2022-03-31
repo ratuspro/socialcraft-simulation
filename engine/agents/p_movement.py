@@ -1,24 +1,21 @@
-from typing import List
-
-from ..world import Location, World
 from .practice import Practice
-from .agent import Agent
+from ..world import Location, World
+from typing import List, Dict, Any, Optional
 
 
 class MoveToLocation(Practice):
-    __destination: Location
-    __path: List[Location]
+
+    label: str = "MoveToLocation"
 
     def __init__(
         self,
-        owner: Agent,
+        owner,
         world: World,
         destination: Location,
-        label: str = "MoveToLocation",
     ) -> None:
-        super().__init__(owner, world, label)
-        self.__destination = destination
-        self.__path = []
+        super().__init__(owner, world)
+        self.__destination: Location = destination
+        self.__path: List[Location] = []
 
     def enter(self) -> None:
         super().enter()
@@ -52,3 +49,9 @@ class MoveToLocation(Practice):
 
     def exit(self) -> None:
         super().exit()
+
+    def properties(self) -> Dict[str, Any]:
+        return super().properties() | {"destination": str(self.__destination)}
+
+    def targetLocation(self) -> Optional[Location]:
+        return self.__destination

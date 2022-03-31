@@ -1,32 +1,20 @@
-from abc import ABC, abstractmethod
-from typing import Callable, Dict, Any, Tuple
+from __future__ import annotations
+from abc import abstractmethod
+from cProfile import label
 
-from ..agents import Agent, Context
-from ..logger import Logger
+from engine.world.location import Location
 from ..world import World
+from ..logger import Logger
+from typing import Any, Dict, Optional
+from ..entities import Object
 
 
-class Practice(ABC):
-    _owner: Agent
-    _world: World
-    __salience_function: Callable[[Context], float]
-    __salience_features: Dict[Tuple[str, Any], Tuple[float, float]]
+class Practice:
+    label: str = "Practice"
 
-    def __init__(
-        self,
-        owner: Agent,
-        world: World,
-        label: str,
-    ) -> None:
+    def __init__(self, owner, world: World) -> None:
         self._owner = owner
-        self._world = world
-        self.__practice_label = label
-
-    def set_salience_function(self, fn_salience: Callable[[Context], float]) -> None:
-        self.__salience_function = fn_salience
-
-    def calculate_salience(self, context: Context) -> float:
-        return self.__salience_function(context)
+        self._world: World = world
 
     @abstractmethod
     def tick(self) -> None:
@@ -34,12 +22,21 @@ class Practice(ABC):
 
     @abstractmethod
     def enter(self) -> None:
-        Logger.instance().on_practice_starts(self._owner, self.__practice_label)
+        Logger.instance().on_practice_starts(self._owner, self.label, self.properties())
 
     @abstractmethod
     def exit(self) -> None:
-        Logger.instance().on_practice_ends(self._owner, self.__practice_label)
+        Logger.instance().on_practice_ends(self._owner, self.label)
 
     @abstractmethod
     def has_ended(self) -> bool:
         pass
+
+    def properties(self) -> Dict[str, Any]:
+        return {}
+
+    def targetLocation(self) -> Optional[Location]:
+        return None
+
+    def targetEntity(self) -> Optional[Object]:
+        return None

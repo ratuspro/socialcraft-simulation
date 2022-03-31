@@ -1,5 +1,4 @@
-from .agent import Agent, Context, Feature
-from .practice import Practice
+from contextvars import Context
+from .context_registry import ContextRegistry, WeightVector
+from .agent import Agent
 from .p_movement import MoveToLocation
-from .p_basic import Sleep
-from .p_social import InteractWithOther

@@ -1,10 +1,10 @@
-from abc import ABC, abstractmethod
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 import matplotlib.pyplot as plt
 import networkx as nx
 
-from ..agents import Agent, Context, Feature
+from engine.entities import entity
+
 from ..entities import Entity
 from .location import Location
 
@@ -22,40 +22,18 @@ class EntityDetails:
 
 
 class World:
-    __agents: List[Agent]
-    __entities: List[Entity]
-    __locations: List[Location]
-    __locations_graph: nx.Graph
-    __entity_details: Dict[Entity, EntityDetails]
-    __time: int
-
     def __init__(self, logger) -> None:
-        self.__entities = []
-        self.__agents = []
-        self.__locations = []
-        self.__entity_details = {}
-        self.__locations_graph = nx.Graph()
-        self.__time = 0
+        self.__entities: List[Entity] = []
+        self.__locations: List[Location] = []
+        self.__entity_details: Dict[Entity, EntityDetails] = {}
+        self.__locations_graph: nx.Graph = nx.Graph()
+        self.__time: int = 0
         self.__logger = logger
 
-    # Agent Management
-
-    def register_agent(self, agent: Agent) -> None:
-
-        if agent in self.__agents:
-            raise Exception("Trying to register agent already registered!")
-
-        self.register_entity(agent)
-        self.__agents.append(agent)
-
-    def unregister_agent(self, agent: Agent) -> None:
-        if agent not in self.__agents:
-            raise Exception("Trying to unregister agent not registered!")
-
-        self.unregister_entity(agent)
-        self.__agents.remove(agent)
-
     # Entity Management
+    @property
+    def entities(self) -> List[Entity]:
+        return self.__entities
 
     def register_entity(self, entity: Entity) -> None:
         if entity in self.__entities:
@@ -78,7 +56,58 @@ class World:
     def get_time_since_last_movement(self, entity: Entity) -> int:
         return self.__entity_details[entity].time_since_last_movement
 
+    def change_entity_attribute(
+        self, actor: Entity, target: Entity, label: str, value: Any
+    ) -> None:
+        actor_location = self.get_entity_location(actor)
+        target_location = self.get_entity_location(target)
+
+        if target_location is None:
+            raise Exception(
+                "Trying to change entity label before placing it in the world"
+            )
+
+        if actor_location is None:
+            raise Exception(
+                "Actor trying to change entity label not yet placed in the world"
+            )
+
+        if target_location != actor_location:
+            raise Exception(
+                "Trying to change entity when actor is not in the same location..."
+            )
+
+        target.add_attribute(label, value)
+
+    def get_entity_attribute(self, actor: Entity, target: Entity, label: str) -> Any:
+        actor_location = self.get_entity_location(actor)
+        target_location = self.get_entity_location(target)
+
+        if target_location is None:
+            raise Exception(
+                "Trying to get entity attribute before placing it in the world"
+            )
+
+        if actor_location is None:
+            raise Exception(
+                "Actor trying to get entity attribute not yet placed in the world"
+            )
+
+        if target_location != actor_location:
+            raise Exception(
+                "Trying to get entity when actor is not in the same location..."
+            )
+
+        if label in target.attributes:
+            return target.attributes[label]
+        else:
+            return None
+
     # Location Management
+
+    @property
+    def locations(self) -> List[Location]:
+        return self.__locations
 
     def register_location(self, location: Location) -> None:
         if location in self.__locations:
@@ -134,7 +163,7 @@ class World:
 
         self.__logger.on_entity_entered(entity, location)
 
-    def get_entity_location(self, entity: Entity) -> Location | None:
+    def get_entity_location(self, entity: Entity) -> Optional[Location]:
         if entity not in self.__entities:
             raise Exception("Getting location of entity not yet registered...")
 
@@ -148,17 +177,17 @@ class World:
         return path
 
     def move_entity_to_location(self, entity: Entity, destination: Location) -> None:
-        agent_location = self.get_entity_location(entity)
+        entity_location = self.get_entity_location(entity)
 
-        if agent_location is None:
+        if entity_location is None:
             raise Exception("Trying to move entity before placing it in the world")
 
-        if destination not in self.__locations_graph.adj[agent_location]:
+        if destination not in self.__locations_graph.adj[entity_location]:
             raise Exception("Trying to move to location not adjacent")
 
         time = self.get_time_since_last_movement(entity)
 
-        if time < agent_location.min_time_inside:
+        if time < entity_location.min_time_inside:
             raise Exception(
                 "Attempting to move before spending the minimum time inside a location"
             )
@@ -184,6 +213,28 @@ class World:
             ).removesuffix(", ")
             print(f" ^-> Entities [{entities_string}]")
 
+    # Entity Management
+
+    def get_entities_at_location(
+        self, perceiver: Entity, location: Location
+    ) -> List[Entity]:
+
+        actor_location = self.get_entity_location(perceiver)
+
+        if actor_location is None:
+            raise Exception("Actor trying to perceive before placing it in the world")
+
+        if actor_location != location:
+            raise Exception("Trying to perceive location not currently in.")
+
+        entities = []
+
+        for entity, details in self.__entity_details.items():
+            if details.location == location:
+                entities.append(entity)
+
+        return entities
+
     # Utilities
 
     def plot_map(self) -> None:
@@ -205,31 +256,6 @@ class World:
                 entities_per_location[details.location] = [entity]
             else:
                 entities_per_location[details.location].append(entity)
-
-        for agent in self.__agents:
-
-            context = Context()
-
-            # Time of Day
-            context.add_feature(
-                Feature("TIME_OF_DAY", None, (self.__time % 24000) / 24000)
-            )
-
-            # Location
-            location = self.get_entity_location(agent)
-            if location is not None:
-                context.add_feature(Feature("InsideLocation", location, 1))
-
-                # Add adjacent locations
-                for adj_location in self.__locations_graph.adj[location]:
-                    context.add_feature(Feature("NearLocation", adj_location, 1))
-
-                # Entities in Location
-                if location in entities_per_location:
-                    for entity in entities_per_location[location]:
-                        context.add_feature(Feature("NearEntity", entity, 1))
-
-            agent.set_context(context)
 
         for entity in self.__entities:
             self.__entity_details[entity].time_since_last_movement += 1

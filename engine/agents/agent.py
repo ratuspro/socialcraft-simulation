@@ -1,118 +1,110 @@
 from __future__ import annotations
-import random
-from typing import Dict, List, Any
 
-from ..entities import Entity
+from ..logger import Logger
+from typing import Dict, Type
+from engine.agents.context_registry import WeightVector
+from engine.agents.practice import Practice
+from ..entities import Entity, Object
+from ..world import World
+from .p_movement import MoveToLocation
+from .p_basic import Sleep, Idle
 
-
-class Feature:
-    __label: str
-    __value: Any
-    __salience: float
-
-    def __init__(self, label: str, value: Any, salience: float) -> None:
-        self.__label = label
-        self.__value = value
-        self.__salience = salience
-
-    @property
-    def label(self) -> str:
-        return self.__label
-
-    @property
-    def value(self) -> Any:
-        return self.__value
-
-    @property
-    def salience(self) -> float:
-        return self.__salience
+import numpy
+import math
 
 
-class Context:
-    __features_by_label: Dict[str, List[Feature]]
-
-    def __init__(self) -> None:
-        self.__features_by_label = {}
-
-    def add_feature(self, feature: Feature) -> None:
-        if feature.label in self.__features_by_label.keys():
-            self.__features_by_label[feature.label].append(feature)
-        else:
-            self.__features_by_label[feature.label] = [feature]
-
-    def get_feature_by_label(self, label: str) -> List[Feature]:
-
-        if label not in self.__features_by_label.keys():
-            raise Exception("Getting feature with non-existent label.")
-
-        return self.__features_by_label[label]
-
-    def get_salience_of_feature_by_label_and_value(
-        self, label: str, value: Any
-    ) -> float:
-
-        if label not in self.__features_by_label.keys():
-            return 0
-
-        features_with_label = self.__features_by_label[label]
-
-        for feature in features_with_label:
-            if feature.value == value:
-                return feature.salience
-
-        return 0
-
-    def get_all_features(self) -> List[Feature]:
-        all_features = []
-        [
-            all_features.extend(features)
-            for _, features in self.__features_by_label.items()
-        ]
-
-        return all_features
+def softmax(x, exp_sum):
+    return math.exp(x) / exp_sum
 
 
 class Agent(Entity):
-    __name: str
-    __practices: List
-    __current_practice: Any
-    __context: Context
-
-    def __init__(self, name: str) -> None:
-        super().__init__()
-        self.__name = name
-        self.__practices = []
+    def __init__(self, name: str, world: World) -> None:
+        self.__name: str = name
+        self.__world: World = world
         self.__current_practice = None
-        self.__context = Context()
-
-    def set_context(self, context: Context) -> None:
-        self.__context = context
+        self.__weight_vector_by_practice: Dict[Type[Practice], WeightVector] = {}
 
     @property
-    def context(self) -> Context:
-        return self.__context
-
-    @property
-    def name(self) -> str:
+    def name(self):
         return self.__name
 
-    def add_practice(self, new_practice) -> None:
-        self.__practices.append(new_practice)
+    @property
+    def world(self):
+        return self.__world
 
-    def __get_best_practices(self) -> List:
-        best_practices, best_practice_salience = [], -1
+    def __str__(self) -> str:
+        return f"{self.__name}"
 
-        for practice in self.__practices:
-            salience = practice.calculate_salience(self.context)
-            if salience == best_practice_salience:
-                best_practices.append(practice)
-            elif salience > best_practice_salience:
-                best_practices = [practice]
-                best_practice_salience = salience
+    def add_weight_vector(
+        self, practice_type: Type, weight_vector: WeightVector
+    ) -> None:
+        self.__weight_vector_by_practice[practice_type] = weight_vector
 
-        return best_practices
+        serialized_vector = {}
+        for (
+            feature_label,
+            feature_weight,
+        ) in weight_vector.get_scalar_features().items():
+            serialized_vector[
+                f"{practice_type.label}_{feature_label}_weight"
+            ] = feature_weight.weight
+            serialized_vector[
+                f"{practice_type.label}_{feature_label}_bias"
+            ] = feature_weight.bias
+        for (
+            feature_label,
+            feature_weight,
+        ) in weight_vector.get_categorical_features().items():
+            serialized_vector[
+                f"{practice_type.label}_{feature_label[0]}_{feature_label[1]}_weight"
+            ] = feature_weight.weight
+            serialized_vector[
+                f"{practice_type.label}_{feature_label[0]}_{feature_label[1]}_bias"
+            ] = feature_weight.bias
+
+        Logger.instance().log_salience_vecotr(
+            self, pratice=practice_type, weights=serialized_vector
+        )
+
+    def get_practice_and_weights(self) -> Dict[Type[Practice], WeightVector]:
+        return self.__weight_vector_by_practice
 
     def tick(self) -> None:
+
+        # Inspect the world
+        day_time = (self.__world.time % 24000) / 24000
+        current_location = self.__world.get_entity_location(self)
+        if current_location is None:
+            raise Exception("Agent not yet placed in the world")
+
+        world_locations = self.__world.locations
+
+        # Generate the practices
+        practices = []
+
+        ## Generate Idle
+        practices.append(Idle(self, self.__world, 5))
+
+        ## Generate moving to practices
+        for location in world_locations:
+            if location != current_location and not location.is_path:
+                practices.append(MoveToLocation(self, self.__world, location))
+
+        ## Generate sleeping practice
+        for entity in self.__world.get_entities_at_location(self, current_location):
+            if (
+                isinstance(entity, Object)
+                and "bed" in entity.attributes
+                and "occupied" in entity.attributes
+                and not entity.attributes["occupied"]
+            ):
+                practices.append(Sleep(self, self.__world, entity, 2000))
+
+        ## Generate Context
+        features = {} 
+        features["Time"] = day_time
+        features["CurrentLocation"] = current_location
+        features["NumberNearbyAgent"] = len(list(filter(lambda entity: isinstance(entity, Agent), self.__world.get_entities_at_location(self, current_location))))
 
         if self.__current_practice is not None:
             if self.__current_practice.has_ended():
@@ -121,10 +113,30 @@ class Agent(Entity):
             else:
                 self.__current_practice.tick()
         else:
-            new_practice = random.choice(self.__get_best_practices())
-            if new_practice is not None:
-                self.__current_practice = new_practice
-                self.__current_practice.enter()
 
-    def __str__(self) -> str:
-        return f"Agent {self.name}"
+            practice_saliences = {}
+
+            for practice in practices:
+                features["TargetEntity"] = practice.targetEntity()
+                features["TargetLocation"] = practice.targetLocation()
+                weight_vector = self.__weight_vector_by_practice[type(practice)]
+                practice_saliences[practice] = weight_vector.calculate_salience(
+                    features
+                )
+
+            sum_saliences = sum(
+                [math.exp(value) for value in practice_saliences.values()]
+            )
+
+            for practice in practice_saliences.keys():
+                practice_saliences[practice] = softmax(
+                    practice_saliences[practice], sum_saliences
+                )
+
+            selected_practice = numpy.random.choice(
+                list(practice_saliences.keys()), p=list(practice_saliences.values())
+            )
+
+            if selected_practice is not None:
+                self.__current_practice = selected_practice
+                self.__current_practice.enter()

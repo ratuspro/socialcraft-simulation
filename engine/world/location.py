@@ -1,14 +1,16 @@
 class Location:
-    __name: str
-    __min_time_inside: int
-
-    def __init__(self, name: str, min_time_inside: int) -> None:
-        self.__name = name
-        self.__min_time_inside = min_time_inside
+    def __init__(self, name: str, min_time_inside: int, is_path: bool) -> None:
+        self.__name: str = name
+        self.__min_time_inside: int = min_time_inside
+        self.__is_path: bool = is_path
 
     @property
     def name(self) -> str:
         return self.__name
+
+    @property
+    def is_path(self) -> bool:
+        return self.__is_path
 
     def __str__(self) -> str:
         return self.__name
