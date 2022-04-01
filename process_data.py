@@ -1,11 +1,13 @@
-import pandas
+import os
+from engine.logger.logger import Logger
 
 if __name__ == "__main__":
 
-    data = pandas.read_csv("data.csv")
+    path = 'logs/'
+    files = os.listdir(path)
 
-    training_data = data.values[:, :-3]
-    training_values = data.values[:, -1:]
+    for f in files:
+        if "db" in f:
+            logger = Logger(path + f)
+            logger.database.all()
 
-    print(training_values)
-    print(training_values)

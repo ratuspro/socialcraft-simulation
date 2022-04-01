@@ -6,23 +6,23 @@ import json
 from engine.entities.entity import Entity
 
 class Entry:
-    def __init__(self, tick: str, type: str, agent: str,  data: Dict[str, str]) -> None:
+    def __init__(self, tick: str, type: str, entity: str,  data: Dict[str, str]) -> None:
         self.__data: Dict[str, str] = data
         self.__tick: str = tick
         self.__type: str = type
-        self.__agent: str = agent
+        self.__entity: str = entity
 
     def toDocument(self) -> Dict[str, str]:
         document = {}
         document['tick'] = self.__tick
         document['type'] = self.__type
-        document['agent'] = self.__agent
+        document['entity'] = self.__entity
         document = document | self.__data
         return document
 
     @classmethod
     def fromDocument(cls, document: Dict[str, str]):
-        return cls(document['tick'], document['type'], document['agent'], {})
+        return cls(document['tick'], document['type'], document['entity'], {})
 
 class Logger:
     _instance = None
@@ -37,7 +37,7 @@ class Logger:
         self.__buffer = []
         self.__db = TinyDB(filepath)
 
-    def register_entry(self, tick: int, type: EntryType, entity: Entity,  data: Dict[str, str]) -> None:
+    def register_entry(self, tick: int, type: EntryType, entity: Entity, data: Dict[str, str]) -> None:
         self.__buffer.append(Entry(tick, json.dumps(type), entity.name, data))
 
     def commit(self) -> None:
@@ -47,6 +47,6 @@ class Logger:
         self.__db.insert_multiple(docs)        
         self.__buffer = []
 
-    def get_all_from_agent(self, entity: str) -> List:
-        entryQ = Query()
-        return self.__db.search(entryQ.entity == entity)
+    @property
+    def database(self) -> TinyDB:
+        return self.__db
