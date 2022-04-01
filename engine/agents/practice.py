@@ -1,7 +1,6 @@
 from __future__ import annotations
 from abc import abstractmethod
-from cProfile import label
-
+from utils import DependencyManager
 from engine.world.location import Location
 from ..world import World
 from ..logger import Logger
@@ -22,11 +21,11 @@ class Practice:
 
     @abstractmethod
     def enter(self) -> None:
-        Logger.instance().register_entry(self._world.time, Logger.EntryType.PRACTICEENDS, self._owner, {'practice_label': self.label})
+        DependencyManager.instance().get_logger().register_entry(self._world.time, Logger.EntryType.PRACTICEENDS, self._owner, {'practice_label': self.label})
         
     @abstractmethod
     def exit(self) -> None:
-        Logger.instance().register_entry(self._world.time, Logger.EntryType.PRACTICESTARTS, self._owner, {'practice_label': self.label})
+        DependencyManager.instance().get_logger().register_entry(self._world.time, Logger.EntryType.PRACTICESTARTS, self._owner, {'practice_label': self.label})
 
     @abstractmethod
     def has_ended(self) -> bool:

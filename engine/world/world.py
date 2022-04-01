@@ -3,6 +3,8 @@ from typing import Dict, List, Optional, Any
 
 import matplotlib.pyplot as plt
 import networkx as nx
+
+from utils.dependency_manager import DependencyManager
 from ..logger import Logger
 from ..entities import Entity
 from .location import Location
@@ -21,13 +23,13 @@ class EntityDetails:
 
 
 class World:
-    def __init__(self, logger) -> None:
+    def __init__(self) -> None:
         self.__entities: List[Entity] = []
         self.__locations: List[Location] = []
         self.__entity_details: Dict[Entity, EntityDetails] = {}
         self.__locations_graph: nx.Graph = nx.Graph()
         self.__time: int = 0
-        self.__logger : Logger = Logger.instance()
+        self.__logger : Logger = DependencyManager.instance().get_logger()
 
     # Entity Management
     @property

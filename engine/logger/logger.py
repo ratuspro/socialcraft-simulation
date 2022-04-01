@@ -25,7 +25,6 @@ class Entry:
         return cls(document['tick'], document['type'], document['agent'], {})
 
 class Logger:
-    __filepath = ""
     _instance = None
 
     class EntryType(str, Enum):
@@ -34,25 +33,9 @@ class Logger:
         ENTITYENTERSLOCATION:str = "ENTITY_ENTERS_LOCATION"
         SALIENCEVECTOR:str = "SALIENCE_VECTOR"
 
-    @classmethod
-    def instance(cls):
-        if cls._instance is None:
-            cls._instance = cls.__new__(cls)
-            cls._instance.__buffer = []
-            cls._instance.__db = TinyDB(cls.__filepath)
-        return cls._instance
-
-    @classmethod
-    def drop(cls):
-        cls._instance = None
-
-    @classmethod
-    def set_file_path(cls, path):
-        cls.__filepath = path
-
-    def __init__(self) -> None:
-        raise RuntimeError(
-            "Cannot instanciate Logger directly. Use Logger.instance()")
+    def __init__(self, filepath:str) -> None:
+        self.__buffer = []
+        self.__db = TinyDB(filepath)
 
     def register_entry(self, tick: int, type: EntryType, entity: Entity,  data: Dict[str, str]) -> None:
         self.__buffer.append(Entry(tick, json.dumps(type), entity.name, data))
@@ -67,7 +50,3 @@ class Logger:
     def get_all_from_agent(self, entity: str) -> List:
         entryQ = Query()
         return self.__db.search(entryQ.entity == entity)
-    
-
-
-

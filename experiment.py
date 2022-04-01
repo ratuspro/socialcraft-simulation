@@ -11,6 +11,7 @@ from engine.agents.p_basic import Idle, Sleep
 from engine.entities.object import Object
 from engine.logger import Logger
 from engine.world import Location, World
+from utils.dependency_manager import DependencyManager
 
 NUM_TICKS = 24000
 NUM_TICKS_TO_LOG_COMMIT = 10000
@@ -85,12 +86,11 @@ def add_random_weights_to_practices(agent: Agent, context: ContextRegistry) -> N
     agent.add_weight_vector(Idle, create_random_weight_vector(context))
 
 
-def run_world(logs_path: str):
+def run_world():
 
-    Logger.set_file_path(path=logs_path)
-    logger = Logger.instance()
+    logger = DependencyManager.instance().get_logger()
 
-    w1 = World(logger)
+    w1 = World()
 
     # Add Locations
     house1 = Location("House1", min_time_inside=10, is_path=False)
@@ -198,10 +198,8 @@ def run_world(logs_path: str):
     print(f"Total simulation took {total_miliseconds/1000} seconds")
     print(f"Average tick took {total_miliseconds/NUM_TICKS} miliseconds")
 
-    Logger.drop()
-
 if __name__ == "__main__":
 
     while True:
-        run_world(
-            f"logs/{ datetime.now().strftime('%Y_%m_%d_%H_%M_%S_%f')}_{random.randint(0,9999)}.db")
+        DependencyManager.instance().add_logger(Logger(f"logs/{ datetime.now().strftime('%Y_%m_%d_%H_%M_%S_%f')}_{random.randint(0,9999)}.db"))
+        run_world()

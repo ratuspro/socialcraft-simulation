@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from utils import DependencyManager
+
 from ..logger import Logger
 from typing import Dict, Type
 from engine.agents.context_registry import WeightVector
@@ -62,7 +64,7 @@ class Agent(Entity):
                 f"{practice_type.label}_{feature_label[0]}_{feature_label[1]}_bias"
             ] = feature_weight.bias
 
-        Logger.instance().register_entry(-1, Logger.EntryType.SALIENCEVECTOR, self, {'practice_label': practice_type.label, 'practice_weight_vector':serialized_vector})
+        DependencyManager.instance().get_logger().register_entry(-1, Logger.EntryType.SALIENCEVECTOR, self, {'practice_label': practice_type.label, 'practice_weight_vector':serialized_vector})
 
     def get_practice_and_weights(self) -> Dict[Type[Practice], WeightVector]:
         return self.__weight_vector_by_practice
