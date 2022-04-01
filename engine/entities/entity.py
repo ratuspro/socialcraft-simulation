@@ -3,13 +3,18 @@ from typing import Dict, Any
 
 
 class Entity(ABC):
-    def __init__(self) -> None:
+    def __init__(self, name: str) -> None:
         super().__init__()
         self.__attributes: Dict[str, Any] = {}
+        self.__name = name
 
     @abstractmethod
     def tick(self) -> None:
         pass
+
+    @property
+    def name(self) -> str:
+        return self.__name
 
     @property
     def attributes(self) -> Dict[str, Any]:

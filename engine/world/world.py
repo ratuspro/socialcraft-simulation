@@ -1,10 +1,9 @@
+
 from typing import Dict, List, Optional, Any
 
 import matplotlib.pyplot as plt
 import networkx as nx
-
-from engine.entities import entity
-
+from ..logger import Logger
 from ..entities import Entity
 from .location import Location
 
@@ -28,7 +27,7 @@ class World:
         self.__entity_details: Dict[Entity, EntityDetails] = {}
         self.__locations_graph: nx.Graph = nx.Graph()
         self.__time: int = 0
-        self.__logger = logger
+        self.__logger : Logger = Logger.instance()
 
     # Entity Management
     @property
@@ -161,7 +160,7 @@ class World:
         self.__entity_details[entity].location = location
         self.__entity_details[entity].reset_timer()
 
-        self.__logger.on_entity_entered(entity, location)
+        self.__logger.register_entry(self.time, Logger.EntryType.ENTITYENTERSLOCATION, entity, {"destination":location.name})
 
     def get_entity_location(self, entity: Entity) -> Optional[Location]:
         if entity not in self.__entities:
@@ -195,7 +194,7 @@ class World:
         self.__entity_details[entity].location = destination
         self.__entity_details[entity].reset_timer()
 
-        self.__logger.on_entity_entered(entity, destination)
+        self.__logger.register_entry(self.time, Logger.EntryType.ENTITYENTERSLOCATION, entity, {"destination":destination.name})
 
     def show_locations(self) -> None:
 

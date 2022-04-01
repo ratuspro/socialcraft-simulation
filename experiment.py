@@ -183,22 +183,22 @@ def run_world(logs_path: str):
 
     # Simulate
     print("Starting Simulation...")
-    start = datetime.datetime.now()
+    start = datetime.now()
     for i in range(NUM_TICKS):
         w1.tick()
-        logger.set_tick(w1.time)
         if i % NUM_TICKS_TO_LOG_COMMIT == 0:
             logger.commit()
     logger.commit()
     print("Simulation ended")
 
-    end = datetime.datetime.now()
+    end = datetime.now()
     delta = end - start
     total_miliseconds = delta.total_seconds() * 1000 + delta.microseconds / 1000
 
     print(f"Total simulation took {total_miliseconds/1000} seconds")
     print(f"Average tick took {total_miliseconds/NUM_TICKS} miliseconds")
 
+    Logger.drop()
 
 if __name__ == "__main__":
 

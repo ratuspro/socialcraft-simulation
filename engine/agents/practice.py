@@ -22,11 +22,11 @@ class Practice:
 
     @abstractmethod
     def enter(self) -> None:
-        Logger.instance().on_practice_starts(self._owner, self.label, self.properties())
-
+        Logger.instance().register_entry(self._world.time, Logger.EntryType.PRACTICEENDS, self._owner, {'practice_label': self.label})
+        
     @abstractmethod
     def exit(self) -> None:
-        Logger.instance().on_practice_ends(self._owner, self.label)
+        Logger.instance().register_entry(self._world.time, Logger.EntryType.PRACTICESTARTS, self._owner, {'practice_label': self.label})
 
     @abstractmethod
     def has_ended(self) -> bool:
