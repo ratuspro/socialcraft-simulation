@@ -162,7 +162,7 @@ class World:
         self.__entity_details[entity].location = location
         self.__entity_details[entity].reset_timer()
 
-        self.__logger.register_entry(self.time, Logger.EntryType.ENTITYENTERSLOCATION, entity, {"destination":location.name})
+        self.__logger.register_entry(self.time, Logger.A_ENTITYENTERSLOCATION, entity, {"destination":location.name})
 
     def get_entity_location(self, entity: Entity) -> Optional[Location]:
         if entity not in self.__entities:
@@ -196,7 +196,7 @@ class World:
         self.__entity_details[entity].location = destination
         self.__entity_details[entity].reset_timer()
 
-        self.__logger.register_entry(self.time, Logger.EntryType.ENTITYENTERSLOCATION, entity, {"destination":destination.name})
+        self.__logger.register_entry(self.time, Logger.A_ENTITYENTERSLOCATION, entity, {"destination":destination.name})
 
     def show_locations(self) -> None:
 

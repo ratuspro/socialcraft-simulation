@@ -21,11 +21,11 @@ class Practice:
 
     @abstractmethod
     def enter(self) -> None:
-        DependencyManager.instance().get_logger().register_entry(self._world.time, Logger.EntryType.PRACTICEENDS, self._owner, {'practice_label': self.label})
+        DependencyManager.instance().get_logger().register_entry(self._world.time, Logger.A_PRACTICESTARTS, self._owner, {'practice_label': self.label} | self.properties())
         
     @abstractmethod
     def exit(self) -> None:
-        DependencyManager.instance().get_logger().register_entry(self._world.time, Logger.EntryType.PRACTICESTARTS, self._owner, {'practice_label': self.label})
+        DependencyManager.instance().get_logger().register_entry(self._world.time, Logger.A_PRACTICEENDS, self._owner, {'practice_label': self.label})
 
     @abstractmethod
     def has_ended(self) -> bool:

@@ -20,25 +20,19 @@ class Entry:
         document = document | self.__data
         return document
 
-    @classmethod
-    def fromDocument(cls, document: Dict[str, str]):
-        return cls(document['tick'], document['type'], document['entity'], {})
-
 class Logger:
     _instance = None
-
-    class EntryType(str, Enum):
-        PRACTICESTARTS: str = "PRACTICE_STARTS"
-        PRACTICEENDS:str = "PRACTICE_ENDS"
-        ENTITYENTERSLOCATION:str = "ENTITY_ENTERS_LOCATION"
-        SALIENCEVECTOR:str = "SALIENCE_VECTOR"
+    A_PRACTICESTARTS: str = 'PRACTICE_STARTS'
+    A_PRACTICEENDS:str = 'PRACTICE_ENDS'
+    A_ENTITYENTERSLOCATION:str = 'ENTITY_ENTERS_LOCATION'
+    A_SALIENCEVECTOR:str = 'SALIENCE_VECTOR'
 
     def __init__(self, filepath:str) -> None:
         self.__buffer = []
         self.__db = TinyDB(filepath)
 
-    def register_entry(self, tick: int, type: EntryType, entity: Entity, data: Dict[str, str]) -> None:
-        self.__buffer.append(Entry(tick, json.dumps(type), entity.name, data))
+    def register_entry(self, tick: int, type: str, entity: Entity, data: Dict[str, str]) -> None:
+        self.__buffer.append(Entry(tick, type, entity.name, data))
 
     def commit(self) -> None:
         docs = []
