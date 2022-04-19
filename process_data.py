@@ -1,13 +1,163 @@
-from distutils.log import Log
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 import os
 from engine.logger.logger import Logger
 from tinydb import Query
-from typing import Dict, Any, List, Set
+from typing import Dict, Any, List, Set, Tuple
 from datetime import datetime
 import random
 import csv
 import statistics
 
+@dataclass
+class LogEntry:
+    tick: int
+    type: str
+    subtype: str
+    properties: Dict[str, Any]
+
+class Metric(ABC):
+    @abstractmethod
+    def new_entry(self, new_entry: LogEntry) -> None:
+        pass
+    
+    @abstractmethod
+    def stats(self) -> Dict[str, float]:
+        pass
+
+class LocationsVisited(Metric):
+    def __init__(self, agents: Set[str] ) -> None:
+        self.__agents_names = agents
+        self.__agents_locations_visited: Dict[str, Set[str]] = {}
+    
+    def new_entry(self, new_entry: LogEntry) -> None:
+        if new_entry.type == "WORLD_EVENT" and new_entry.subtype == "ENTITY_ENTERS_LOCATION":
+            if new_entry.properties['entity'] not in self.__agents_names:
+                return
+            if new_entry.properties['entity'] not in self.__agents_locations_visited:
+                self.__agents_locations_visited[new_entry.properties['entity']] = {new_entry.properties['destination']}
+            else:
+                self.__agents_locations_visited[new_entry.properties['entity']].add(new_entry.properties['destination'])
+        
+    def stats(self) -> Dict[str, float]:
+        values = [len(locations) for locations in self.__agents_locations_visited.values()] 
+        return {'locations_visited_mean': statistics.mean(values), 'locations_visited_sd': statistics.stdev(values)}
+
+
+class Trips(Metric):
+    def __init__(self, agents: Set[str] ) -> None:
+        self.__agents_names = agents
+        self.__agents_trips: Dict[str, int] = {}
+    
+    def new_entry(self, new_entry: LogEntry) -> None:
+        if new_entry.type == "WORLD_EVENT" and new_entry.subtype == "ENTITY_ENTERS_LOCATION":
+            if new_entry.properties['entity'] not in self.__agents_names:
+                return
+            if new_entry.properties['entity'] not in self.__agents_trips:
+                self.__agents_trips[new_entry.properties['entity']] = 1
+            else:
+                self.__agents_trips[new_entry.properties['entity']] += 1
+        
+    def stats(self) -> Dict[str, float]:
+        values = [trips for trips in self.__agents_trips.values()] 
+        return {'trips_mean': statistics.mean(values), 'trips_sd': statistics.stdev(values)}
+
+class BedsUsed(Metric):
+    def __init__(self, agents: Set[str] ) -> None:
+        self.__agents_names = agents
+        self.__agents_beds_used: Dict[str, Set[str]] = {}
+    
+    def new_entry(self, new_entry: LogEntry) -> None:
+        if new_entry.type == "WORLD_EVENT" and new_entry.subtype == "PRACTICE_STARTS" and new_entry.properties['practice_label'] == "Sleep":
+            if new_entry.properties['entity'] not in self.__agents_names:
+                return
+            if new_entry.properties['entity'] not in self.__agents_beds_used:
+                self.__agents_beds_used[new_entry.properties['entity']] = {new_entry.properties['bed']}
+            else:
+                self.__agents_beds_used[new_entry.properties['entity']].add(new_entry.properties['bed'])
+        
+    def stats(self) -> Dict[str, float]:
+        values = [len(beds) for beds in self.__agents_beds_used.values()] 
+        return {'beds_used_mean': statistics.mean(values), 'beds_used_sd': statistics.stdev(values)}
+
+class TimeSleeping(Metric):
+    def __init__(self, agents: Set[str] ) -> None:
+        self.__agents_names = agents
+        self.__agents_time_sleeping: Dict[str, float] = {}
+        self.__agent_last_sleeping_start: Dict[str, int] = {}
+    
+    def new_entry(self, new_entry: LogEntry) -> None:
+        if new_entry.type == "WORLD_EVENT" and new_entry.subtype == "PRACTICE_STARTS" and new_entry.properties['practice_label'] == "Sleep":
+            
+            if new_entry.properties['entity'] not in self.__agents_names:
+                return
+            
+            self.__agent_last_sleeping_start[new_entry.properties['entity']] = new_entry.tick
+
+
+        if new_entry.type == "WORLD_EVENT" and new_entry.subtype == "PRACTICE_ENDS" and new_entry.properties['practice_label'] == "Sleep":
+            if new_entry.properties['entity'] not in self.__agents_time_sleeping:
+                self.__agents_time_sleeping[new_entry.properties['entity']] = new_entry.tick - self.__agent_last_sleeping_start[new_entry.properties['entity']]
+            else:
+                self.__agents_time_sleeping[new_entry.properties['entity']] += new_entry.tick - self.__agent_last_sleeping_start[new_entry.properties['entity']]
+        
+    def stats(self) -> Dict[str, float]:
+        values = [sleeping_time for sleeping_time in self.__agents_time_sleeping.values()] 
+        return {'time_sleeping_mean': statistics.mean(values), 'time_sleeping_sd': statistics.stdev(values)}
+
+
+class TimeAtLeastNLocationsWithSpecificOccupancy(Metric):
+    
+    __min_occupants : int = 0
+    __max_occupants : int = 9999999
+    __min_locations : int
+    __last_tick : int
+    __occupancy_per_location: Dict[str, Set[str]] = {}
+    __time_location_with_occupancy: int = 0
+    
+    def __init__(self, agents: Set[str], min_occupants: int, max_occupants: int, min_locations: int) -> None:
+        self.__agents_names = agents
+        self.__min_occupants = min_occupants
+        self.__max_occupants = max_occupants
+        self.__min_locations = min_locations
+        self.__last_tick = 0
+        
+    def new_entry(self, new_entry: LogEntry) -> None:
+        if new_entry.type == "WORLD_EVENT" and new_entry.subtype == "ENTITY_ENTERS_LOCATION":
+            agent = new_entry.properties['entity']
+            
+            if agent not in self.__agents_names:
+                return
+            
+            current_tick = new_entry.tick
+                       
+            if current_tick > self.__last_tick:
+                delta = current_tick - self.__last_tick
+                
+                num_locations = 0
+                for _, occupants in self.__occupancy_per_location.items():
+                    if self.__min_occupants <= len(occupants) <= self.__max_occupants:
+                        num_locations += 1
+                
+                if num_locations >= self.__min_locations:
+                    self.__time_location_with_occupancy += delta
+
+                    
+            for _, occupants in self.__occupancy_per_location.items():
+                if agent in occupants:
+                    occupants.remove(agent)
+            
+            agent_location = new_entry.properties['destination']
+            
+            if agent_location not in self.__occupancy_per_location:
+                self.__occupancy_per_location[agent_location] = {agent}
+            else:
+                self.__occupancy_per_location[agent_location].add(agent)
+                           
+            self.__last_tick = current_tick
+                
+    def stats(self) -> Dict[str, float]:
+        return {f'time_atleast_{self.__min_locations}Locations_between_{self.__min_occupants}_and_{self.__max_occupants}_occupants': self.__time_location_with_occupancy}
 
 class Agent:
 
@@ -29,14 +179,19 @@ if __name__ == "__main__":
     output_file = f"output_{datetime.now().strftime('%Y_%m_%d_%H_%M_%S_%f')}_{random.randint(0,9999)}.csv"
     field_names = []
     
+    
+    
+    
+    
     for f in files:
         if ".db" in f:
+            
             logger = Logger(path + f)
-   
+            
             ##################################
             # Get Domains    
             ##################################        
-            # > AGENTS
+            # > AGENTS & LOCATIONS
             agents_name = set()
             locations_name = set()
             for doc in logger.database.all():
@@ -44,6 +199,32 @@ if __name__ == "__main__":
                     agents_name.add(doc['entity'])
                 if doc['type'] == Logger.A_ENTITYENTERSLOCATION:
                     locations_name.add(doc['destination'])
+            
+            ##################################
+            # Prepare Metrics    
+            ##################################      
+            
+            metrics : List[Metric] = []
+            metrics.append(LocationsVisited(agents=agents_name))
+            metrics.append(Trips(agents=agents_name))
+            metrics.append(BedsUsed(agents=agents_name))
+            metrics.append(TimeSleeping(agents=agents_name))
+            metrics.append(TimeAtLeastNLocationsWithSpecificOccupancy(agents=agents_name, min_occupants=2,max_occupants=10, min_locations=1))
+            metrics.append(TimeAtLeastNLocationsWithSpecificOccupancy(agents=agents_name, min_occupants=4,max_occupants=10, min_locations=1))
+            metrics.append(TimeAtLeastNLocationsWithSpecificOccupancy(agents=agents_name, min_occupants=9,max_occupants=10, min_locations=1))
+            metrics.append(TimeAtLeastNLocationsWithSpecificOccupancy(agents=agents_name, min_occupants=2,max_occupants=10, min_locations=2))
+            metrics.append(TimeAtLeastNLocationsWithSpecificOccupancy(agents=agents_name, min_occupants=4,max_occupants=10, min_locations=2))
+            metrics.append(TimeAtLeastNLocationsWithSpecificOccupancy(agents=agents_name, min_occupants=2,max_occupants=10, min_locations=3))
+
+            for entry in logger.database.all():
+                log = LogEntry(entry['tick'],type="WORLD_EVENT",subtype=entry['type'], properties=entry)
+                
+                for metric in metrics:
+                    metric.new_entry(log)
+                
+                  
+                
+
             
             ##################################
             # Prepare Data Structure    
@@ -62,84 +243,6 @@ if __name__ == "__main__":
             Entry = Query()
             for entry in logger.database.search(Entry.type == Logger.A_SALIENCEVECTOR):
                 agents[entry['entity']].practices[entry['practice_label']] = entry['practice_weight_vector']
-
-            # Calculate location based metrics
-            for entry in logger.database.search(Entry.type == Logger.A_ENTITYENTERSLOCATION):
-                if entry['entity'] in agents_name:
-                    agents[entry['entity']].locations_visited.add(entry['destination'])
-                    agents[entry['entity']].travels += 1
-                    
-            # Calculate sleep metrics
-            for agent_name in agents_name:
-                sleeping_practices = logger.database.search((Entry.entity == agent_name) & ((Entry.type == Logger.A_PRACTICESTARTS) | (Entry.type == Logger.A_PRACTICEENDS)) & (Entry.practice_label == 'Sleep') )
-                for i in range(0, len(sleeping_practices) // 2):
-                    agents[agent_name].time_sleeping += sleeping_practices[i * 2 + 1]['tick'] - sleeping_practices[i * 2]['tick']
-                    agents[agent_name].beds_used.add(sleeping_practices[i * 2]['bed'])
-
-            ##################################
-            # Calculate Group Metrics
-            ##################################
-            # > Location Distribution
-            occupants : Dict [str, Set[str]] = {}
-            for location in locations_name:
-                occupants[location] = set()
-                
-            agent_location : Dict[str, str] = {}
-                
-            # Number of ticks with at least one location with 2 agents (=N//N)
-            ticks_1location_min2agents = 0 
-            # Number of ticks with at least one location with 4 agents (=N//2)
-            ticks_1location_min4agents = 0
-            # Number of ticks with at least one location with 9 agents (=N//1)
-            ticks_1location_min9agents = 0
-            # Number of ticks with at least two location with 2 agents (=N//N)
-            ticks_2location_min2agents = 0
-            # Number of ticks with at least two location with 4 agents (=N//2)
-            ticks_2location_min4agents = 0
-            # Number of ticks with at least three location with 2 agents (=N//N)
-            ticks_3location_min2agents = 0
-            
-            previous_tick = 0                        
-            for entry in logger.database.search((Entry.type == Logger.A_ENTITYENTERSLOCATION)):
-                if entry['entity'] in agents_name:
-                    agent_name = entry['entity']
-                    agent_new_location = entry['destination']
-                    if entry['tick'] > previous_tick:
-                        delta = entry['tick'] - previous_tick
-                        loc_with2agents = 0
-                        loc_with4agents = 0
-                        loc_with9agents = 0
-                        for loc_name, loc_occupants in occupants.items():
-                            if len(loc_occupants) >= 2:
-                                loc_with2agents+=1
-                            if len(loc_occupants) >= 4:
-                                loc_with4agents+=1
-                            if len(loc_occupants) >= 9:
-                                loc_with9agents+=1
-                        
-                        if loc_with2agents >= 1:
-                            ticks_1location_min2agents +=1
-                        if loc_with2agents >= 2:
-                            ticks_2location_min2agents +=1
-                        if loc_with2agents >= 3:
-                            ticks_3location_min2agents +=1
-                        
-                        if loc_with4agents >= 1:
-                            ticks_1location_min4agents +=1
-                        if loc_with4agents >= 2:
-                            ticks_2location_min4agents +=1
-                            
-                        if loc_with9agents >= 1:
-                            ticks_1location_min9agents +=1  
-                    
-                        previous_tick = entry['tick']
-                
-                    if agent_name in agent_location:
-                        occupants[agent_location[agent_name]].remove(agent_name)
-
-                    occupants[agent_new_location].add(agent_name)
-                    agent_location[agent_name] = agent_new_location           
-           
            
            
             ##################################
@@ -159,23 +262,13 @@ if __name__ == "__main__":
                         
                 agent_id += 1
             
-                    
-            values['locations_visited_avg'] =  statistics.mean([len(ag.locations_visited) for ag in agents.values()])
-            values['locations_visited_sd'] =   statistics.stdev([len(ag.locations_visited) for ag in agents.values()])
             
-            values['travels_avg'] = statistics.mean([ag.travels for ag in agents.values()])
-            values['travels_sd'] = statistics.stdev([ag.travels for ag in agents.values()])
-            values['beds_used_avg'] = statistics.mean([len(ag.beds_used) for ag in agents.values()])
-            values['beds_used_sd'] = statistics.stdev([len(ag.beds_used) for ag in agents.values()])
-            values['time_sleeping_avg'] = statistics.mean([ag.time_sleeping for ag in agents.values()])
-            values['time_sleeping_sd'] = statistics.stdev([ag.time_sleeping for ag in agents.values()])
-            values['time_alo_1loc_min2agents'] = ticks_1location_min2agents/ 24000
-            values['time_alo_1loc_min4agents'] = ticks_1location_min4agents/ 24000
-            values['time_alo_1loc_min9agents'] = ticks_1location_min9agents/ 24000
-            values['time_alo_2loc_min2agents'] = ticks_2location_min2agents/ 24000
-            values['time_alo_2loc_min4agents'] = ticks_2location_min4agents/ 24000
-            values['time_alo_3loc_min2agents'] = ticks_3location_min2agents/ 24000
-                                
+            results ={}
+            for metric in metrics:
+                results.update(metric.stats())
+                            
+            print(results)         
+            input()    
             # Write to file
             file_exists = os.path.isfile(output_file)
                
